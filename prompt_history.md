@@ -130,6 +130,21 @@
 - Rejected / changed:
   - did not add full partner edit/delete workflow; kept scope aligned with assignment
 
+## 2026-04-18T22:00:00Z
+
+- Goal: complete transaction-entry UI behavior
+- Prompt summary: implement transaction forms for four business events, support partner selection, validate required fields, keep service-calling logic thin, and add reasonable smoke coverage
+- Result accepted:
+  - transaction form continues to support all four required business events
+  - added optional existing-partner selection filtered by event type
+  - kept manual partner entry fallback for early-use and small-scope review flow
+  - added thin UI validation for required partner fields before service calls when using manual mode
+  - extended smoke test to verify transaction form controls remain present
+- Validation:
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add separate per-event pages; kept one small shared transaction form to avoid duplicated UI logic
+
 ## Entry Template
 
 - Date/time:

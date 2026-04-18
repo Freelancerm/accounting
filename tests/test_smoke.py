@@ -190,3 +190,5 @@ def test_app_smoke_renders_title() -> None:
     assert app.title[0].value == "Minimal Accounting"
     assert app.radio[0].label == "Navigation"
     assert app.radio[0].options == ["Transactions", "Partners", "Reports"]
+    assert app.selectbox[0].label == "Business Event"
+    assert app.selectbox[1].label == "Existing Partner (Optional)"

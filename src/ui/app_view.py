@@ -200,6 +200,13 @@ def _render_transaction_form(services: AppServices) -> None:
             options=[event.value for event in BusinessEventType],
             format_func=lambda value: value.replace("_", " ").title(),
         )
+        available_partners = _partner_options_for_event(services, BusinessEventType(event_type))
+        partner_selection = st.selectbox(
+            "Existing Partner (Optional)",
+            options=["manual", *available_partners],
+            format_func=lambda value: "Manual Entry" if value == "manual" else value,
+            key="transaction_partner_selection",
+        )
         partner_code = st.text_input("Partner Code", placeholder="CUST-001 or VEND-001")
         partner_name = st.text_input("Partner Name", placeholder="Acme Client")
         amount = st.number_input("Amount", min_value=0.0, value=0.0, step=100.0, format="%.2f")
@@ -209,12 +216,18 @@ def _render_transaction_form(services: AppServices) -> None:
 
         if submitted:
             try:
+                resolved_partner_code, resolved_partner_name = _resolve_partner_input(
+                    services=services,
+                    partner_selection=partner_selection,
+                    fallback_code=partner_code,
+                    fallback_name=partner_name,
+                )
                 _submit_transaction(
                     services=services,
                     event_type=BusinessEventType(event_type),
                     entry_date=entry_date,
-                    partner_code=partner_code,
-                    partner_name=partner_name,
+                    partner_code=resolved_partner_code,
+                    partner_name=resolved_partner_name,
                     amount=Decimal(f"{amount:.2f}"),
                     reference=reference,
                     description=description,
@@ -282,3 +295,44 @@ def _submit_transaction(
             description=description,
         )
     )
+
+
+def _partner_options_for_event(services: AppServices, event_type: BusinessEventType) -> list[str]:
+    expected_type = (
+        PartnerType.CUSTOMER
+        if event_type in {BusinessEventType.SALES_INVOICE, BusinessEventType.CASH_RECEIPT}
+        else PartnerType.VENDOR
+    )
+    return [
+        f"{partner.code} | {partner.name}"
+        for partner in services.partners.list_partners()
+        if partner.partner_type is expected_type
+    ]
+
+
+def _resolve_partner_input(
+    *,
+    services: AppServices,
+    partner_selection: str,
+    fallback_code: str,
+    fallback_name: str,
+) -> tuple[str, str]:
+    if partner_selection == "manual":
+        _validate_transaction_input(fallback_code, fallback_name)
+        return fallback_code, fallback_name
+
+    partner_code = partner_selection.split(" | ", maxsplit=1)[0]
+    partner = next(
+        (partner for partner in services.partners.list_partners() if partner.code == partner_code),
+        None,
+    )
+    if partner is None:
+        raise ValueError("selected partner not found")
+    return partner.code, partner.name
+
+
+def _validate_transaction_input(partner_code: str, partner_name: str) -> None:
+    if not partner_code.strip():
+        raise ValueError("partner code required")
+    if not partner_name.strip():
+        raise ValueError("partner name required")
