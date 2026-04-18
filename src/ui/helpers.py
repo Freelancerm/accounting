@@ -39,7 +39,14 @@ def render_empty_state(message: str) -> None:
 
 def render_error(message: str, error: Exception) -> None:
     """Show user-safe error and log details."""
-    logger.exception("UI operation failed", extra={"ui_message": message})
+    logger.warning(
+        "UI operation failed",
+        extra={
+            "ui_message": message,
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+        },
+    )
     st.error(f"{message}: {error}")
 
 

@@ -159,6 +159,22 @@
 - Rejected / changed:
   - did not add explicit refresh controls; Streamlit rerender from normal interaction already sufficient for this small app
 
+## 2026-04-18T22:20:00Z
+
+- Goal: harden app and broaden automated test coverage
+- Prompt summary: improve reliability, clean fixtures, add broader integration tests, tighten validation/error handling, and remove small sources of duplication without changing scope
+- Result accepted:
+  - added end-to-end integration tests across partner creation, four business flows, persistence, and reporting
+  - added failure-path integration test to verify no partial persistence on invalid flow
+  - cleaned test fixtures with reusable partner builder helper
+  - improved workflow exception logging context
+  - changed UI error helper to log concise warning context instead of noisy stack traces for expected user-facing failures
+- Validation:
+  - `python3 -m compileall src tests app.py`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add new feature surface or heavy abstractions; kept hardening focused on reliability and clarity
+
 ## Entry Template
 
 - Date/time:

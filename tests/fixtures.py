@@ -12,12 +12,16 @@ from src.domain.events import (
 from src.domain.posting_rules import PostingService
 
 
+def build_partner(*, code: str, name: str, partner_type: PartnerType) -> Partner:
+    return Partner(code=code, name=name, partner_type=partner_type)
+
+
 def customer_partner() -> Partner:
-    return Partner(code="CUST-001", name="Acme Client", partner_type=PartnerType.CUSTOMER)
+    return build_partner(code="CUST-001", name="Acme Client", partner_type=PartnerType.CUSTOMER)
 
 
 def vendor_partner() -> Partner:
-    return Partner(code="VEND-001", name="Cloud Vendor", partner_type=PartnerType.VENDOR)
+    return build_partner(code="VEND-001", name="Cloud Vendor", partner_type=PartnerType.VENDOR)
 
 
 def sales_invoice() -> SalesInvoice:

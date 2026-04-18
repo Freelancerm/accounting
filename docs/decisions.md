@@ -18,6 +18,7 @@
 - Keep partner management intentionally small: single create form, simple list, and type filter in UI instead of full CRUD workflow.
 - Transaction UI supports optional existing-partner selection filtered by event type, with manual partner entry fallback to keep form usable before master data exists.
 - Report UI stays simple: metrics plus tables for P&L, movement table plus partner filter and balances for ledger.
+- Hardening prefers better validation, integration coverage, and clearer logs over new features or new layers.
 - Keep Streamlit UI limited to stable primitives: `st.form`, `st.tabs`, `st.dataframe`, `st.metric`, `st.selectbox`, `st.date_input`, `st.number_input`, `st.text_input`.
 
 ## Simplifications
@@ -37,4 +38,5 @@
 - Thin services avoid god-service growth, but compatibility facade `AccountingService` still remains for current UI until UI gets direct service wiring.
 - Report DTOs keep report logic separate from UI, but temporary DataFrame adapters remain to avoid large UI rewrite in same step.
 - `st.rerun()` used sparingly after successful form submissions to refresh top-of-page summaries and tables without burying business logic in UI.
+- UI error helper logs concise warning context for user-facing failures instead of full stack traces for every expected validation problem.
 - Reporting stays simple and readable instead of fully general ledger-grade.

@@ -64,6 +64,10 @@ class ServiceWorkflow:
         except Exception:
             logger.exception(
                 "Unexpected service workflow failure",
-                extra={"event_type": event.event_type.value, "partner_code": event.partner.code},
+                extra={
+                    "event_type": event.event_type.value,
+                    "partner_code": event.partner.code,
+                    "reference": event.reference,
+                },
             )
             raise
