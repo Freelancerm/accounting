@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import date
 from decimal import Decimal
+import sqlite3
 from uuid import uuid4
 
 from src.core.logging_config import get_logger
@@ -35,12 +37,18 @@ class BusinessDocumentRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def save(self, event: BusinessEvent, document_id: str | None = None) -> str:
+    def save(
+        self,
+        event: BusinessEvent,
+        document_id: str | None = None,
+        connection: sqlite3.Connection | None = None,
+    ) -> str:
         """Persist business document and return identifier."""
         saved_document_id = document_id or str(uuid4())
         try:
-            with self._database.connect() as connection:
-                connection.execute(
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                active_connection.execute(
                     """
                     INSERT INTO business_documents (
                         document_id, event_type, entry_date, partner_code, amount, reference, description
@@ -64,11 +72,16 @@ class BusinessDocumentRepository:
             raise
         return saved_document_id
 
-    def list_all(self, partners_by_code: dict[str, Partner]) -> list[tuple[str, BusinessEvent]]:
+    def list_all(
+        self,
+        partners_by_code: dict[str, Partner],
+        connection: sqlite3.Connection | None = None,
+    ) -> list[tuple[str, BusinessEvent]]:
         """Return stored business documents with reconstructed event models."""
         try:
-            with self._database.connect() as connection:
-                rows = connection.execute(
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                rows = active_connection.execute(
                     """
                     SELECT document_id, event_type, entry_date, partner_code, amount, reference, description
                     FROM business_documents

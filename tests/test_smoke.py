@@ -179,7 +179,7 @@ def test_accounting_service_logs_and_persists_sales_invoice(tmp_path, caplog) ->
 
     assert entry.partner_code == "CUST-001"
     assert entry.reference == "INV-1001"
-    assert "Recorded accounting event" in caplog.text
+    assert "Recorded service workflow" in caplog.text
     assert len(service.list_entries()) == 1
 
 

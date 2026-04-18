@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
+import sqlite3
+
 from src.core.logging_config import get_logger
 from src.domain.events import Partner, PartnerType
 from src.repositories.database import SQLiteDatabase
@@ -15,11 +18,12 @@ class PartnerRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def upsert(self, partner: Partner) -> None:
+    def upsert(self, partner: Partner, connection: sqlite3.Connection | None = None) -> None:
         """Create or update partner."""
         try:
-            with self._database.connect() as connection:
-                connection.execute(
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                active_connection.execute(
                     """
                     INSERT INTO partners (code, name, partner_type)
                     VALUES (?, ?, ?)
@@ -33,11 +37,12 @@ class PartnerRepository:
             logger.exception("Partner repository write failed", extra={"partner_code": partner.code})
             raise
 
-    def list_all(self) -> list[Partner]:
+    def list_all(self, connection: sqlite3.Connection | None = None) -> list[Partner]:
         """Return all partners."""
         try:
-            with self._database.connect() as connection:
-                rows = connection.execute(
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                rows = active_connection.execute(
                     "SELECT code, name, partner_type FROM partners ORDER BY code"
                 ).fetchall()
         except Exception:

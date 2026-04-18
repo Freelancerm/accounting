@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import date
 from decimal import Decimal
+import sqlite3
 
 from src.core.logging_config import get_logger
 from src.domain.accounts import ACCOUNT_BY_CODE
@@ -19,11 +21,12 @@ class JournalEntryRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def save(self, entry: JournalEntry) -> None:
+    def save(self, entry: JournalEntry, connection: sqlite3.Connection | None = None) -> None:
         """Persist balanced journal entry and lines."""
         try:
-            with self._database.connect() as connection:
-                connection.execute(
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                active_connection.execute(
                     """
                     INSERT INTO journal_entries (
                         entry_id, entry_date, event_type, partner_code, partner_name, reference, description
@@ -39,7 +42,7 @@ class JournalEntryRepository:
                         entry.description,
                     ),
                 )
-                connection.executemany(
+                active_connection.executemany(
                     """
                     INSERT INTO posting_lines (entry_id, account_code, debit, credit)
                     VALUES (?, ?, ?, ?)
@@ -53,18 +56,19 @@ class JournalEntryRepository:
             logger.exception("Journal entry repository write failed", extra={"entry_id": entry.entry_id})
             raise
 
-    def list_all(self) -> list[JournalEntry]:
+    def list_all(self, connection: sqlite3.Connection | None = None) -> list[JournalEntry]:
         """Return all journal entries with posting lines."""
         try:
-            with self._database.connect() as connection:
-                entry_rows = connection.execute(
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                entry_rows = active_connection.execute(
                     """
                     SELECT entry_id, entry_date, event_type, partner_code, partner_name, reference, description
                     FROM journal_entries
                     ORDER BY entry_date, entry_id
                     """
                 ).fetchall()
-                line_rows = connection.execute(
+                line_rows = active_connection.execute(
                     """
                     SELECT entry_id, account_code, debit, credit
                     FROM posting_lines

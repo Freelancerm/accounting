@@ -12,6 +12,7 @@
 - Keep domain logic in dataclasses and service layer.
 - Isolate posting engine in `PostingService` with one `post(event)` entrypoint and explicit per-event handlers.
 - Split persistence into small repositories: `PartnerRepository`, `BusinessDocumentRepository`, `JournalEntryRepository`, backed by shared `SQLiteDatabase` bootstrap/helper.
+- Split orchestration into thin services: `PartnerService`, `SalesService`, `PurchaseService`, `CashService`, with shared `ServiceWorkflow` for transactional save + logging.
 - Keep Streamlit UI limited to stable primitives: `st.form`, `st.tabs`, `st.dataframe`, `st.metric`, `st.selectbox`, `st.date_input`, `st.number_input`, `st.text_input`.
 
 ## Simplifications
@@ -28,4 +29,5 @@
 - On-demand partner creation reduces UI clutter but skips master-data workflows.
 - Type-dispatch posting engine keeps extension local, but unsupported events fail fast instead of being silently ignored.
 - Shared DB helper plus small repositories keeps schema explicit and reviewable, but adds thin coordination layer instead of one-file persistence.
+- Thin services avoid god-service growth, but compatibility facade `AccountingService` still remains for current UI until UI gets direct service wiring.
 - Reporting stays simple and readable instead of fully general ledger-grade.

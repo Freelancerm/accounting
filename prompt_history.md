@@ -66,6 +66,23 @@
 - Rejected / changed:
   - did not add heavy ORM or migration tool; kept raw sqlite3 for clarity and low setup cost
 
+## 2026-04-18T21:15:00Z
+
+- Goal: implement application services that orchestrate main user flows
+- Prompt summary: split service layer into partner, sales, purchase, and cash services; add transaction-like consistency, logging, and service workflow tests
+- Result accepted:
+  - added explicit service commands/DTOs and `ServiceResult`
+  - split orchestration into `PartnerService`, `SalesService`, `PurchaseService`, `CashService`
+  - added shared `ServiceWorkflow` for transactional save of partner + business document + journal entry
+  - updated repositories to support shared connection use inside one transaction
+  - kept `AccountingService` as thin compatibility facade for current UI
+  - added service workflow tests for success, validation failure, rollback, and logging
+- Validation:
+  - `python3 -m compileall src tests app.py`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not wire UI directly to new services yet; preserved current facade to keep change small and reviewable
+
 ## Entry Template
 
 - Date/time:
