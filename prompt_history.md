@@ -83,6 +83,22 @@
 - Rejected / changed:
   - did not wire UI directly to new services yet; preserved current facade to keep change small and reviewable
 
+## 2026-04-18T21:30:00Z
+
+- Goal: implement reporting layer for simplified Profit and Loss and partner ledger
+- Prompt summary: add report services, report DTOs/view models, supporting repository query methods, report tests, and keep logic separate from Streamlit
+- Result accepted:
+  - added `ProfitAndLossReport` and `PartnerLedgerReport`
+  - added reporting DTOs in `src/reporting/models.py`
+  - added flattened journal-entry query helper for report use
+  - kept small DataFrame adapter functions for current Streamlit rendering compatibility
+  - added tests for revenue/expense aggregation, customer and vendor ledger balances, and empty-state reporting
+- Validation:
+  - `python3 -m compileall src tests app.py`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - avoided pushing complex SQL into repositories; report computations remain explicit in Python for reviewability
+
 ## Entry Template
 
 - Date/time:

@@ -102,3 +102,29 @@ class JournalEntryRepository:
             )
             for row in entry_rows
         ]
+
+    def list_posting_rows(self, connection: sqlite3.Connection | None = None) -> list[sqlite3.Row]:
+        """Return flattened posting rows for reporting queries."""
+        try:
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                return active_connection.execute(
+                    """
+                    SELECT
+                        je.entry_id,
+                        je.entry_date,
+                        je.event_type,
+                        je.partner_code,
+                        je.partner_name,
+                        je.reference,
+                        pl.account_code,
+                        pl.debit,
+                        pl.credit
+                    FROM journal_entries je
+                    JOIN posting_lines pl ON pl.entry_id = je.entry_id
+                    ORDER BY je.entry_date, je.entry_id, pl.line_id
+                    """
+                ).fetchall()
+        except Exception:
+            logger.exception("Journal entry reporting query failed")
+            raise
