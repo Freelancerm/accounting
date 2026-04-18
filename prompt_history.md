@@ -49,6 +49,23 @@
 - Rejected / changed:
   - preserved compatibility alias `PostingRules = PostingService` to avoid unnecessary breakage while refactoring
 
+## 2026-04-18T21:00:00Z
+
+- Goal: add simple production-minded persistence layer for partners, business documents, and journal entries
+- Prompt summary: use SQLite, keep repository abstractions clean, add explicit bootstrap/schema, seed fixed accounts, add repository logging and tests
+- Result accepted:
+  - split persistence into `SQLiteDatabase`, `PartnerRepository`, `BusinessDocumentRepository`, `JournalEntryRepository`
+  - kept `SQLiteRepository` as thin compatibility facade for existing app/service flow
+  - added explicit schema for accounts, partners, business documents, journal entries, posting lines
+  - seeded fixed chart of accounts during bootstrap
+  - service now persists business documents alongside journal entries
+  - added repository tests and shared fixtures
+- Validation:
+  - `python3 -m compileall src tests app.py`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add heavy ORM or migration tool; kept raw sqlite3 for clarity and low setup cost
+
 ## Entry Template
 
 - Date/time:

@@ -143,6 +143,7 @@ class AccountingService:
         try:
             entry = self._posting_service.post(event)
             self._repository.upsert_partner(event.partner)
+            self._repository.save_business_document(event)
             self._repository.save_journal_entry(entry)
             logger.info(
                 "Recorded accounting event",
