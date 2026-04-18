@@ -8,7 +8,9 @@ from decimal import Decimal
 from pathlib import Path
 import sqlite3
 
-from src.domain.models import BusinessEventType, JournalEntry, Partner, PartnerType, PostingLine
+from src.domain.accounts import ACCOUNT_BY_CODE
+from src.domain.events import Partner, PartnerType
+from src.domain.journal import JournalEntry, JournalLine
 
 
 class SQLiteRepository:
@@ -99,7 +101,7 @@ class SQLiteRepository:
                 (
                     entry.entry_id,
                     entry.entry_date.isoformat(),
-                    entry.event_type.value,
+                    entry.event_type,
                     entry.partner_code,
                     entry.partner_name,
                     str(entry.amount),
@@ -131,8 +133,8 @@ class SQLiteRepository:
         lines_by_entry: dict[str, list[PostingLine]] = {}
         for row in line_rows:
             lines_by_entry.setdefault(row["entry_id"], []).append(
-                PostingLine(
-                    account_code=row["account_code"],
+                JournalLine(
+                    account=ACCOUNT_BY_CODE[row["account_code"]],
                     debit=Decimal(row["debit"]),
                     credit=Decimal(row["credit"]),
                 )
@@ -144,10 +146,9 @@ class SQLiteRepository:
                 JournalEntry(
                     entry_id=row["entry_id"],
                     entry_date=date.fromisoformat(row["entry_date"]),
-                    event_type=BusinessEventType(row["event_type"]),
+                    event_type=row["event_type"],
                     partner_code=row["partner_code"],
                     partner_name=row["partner_name"],
-                    amount=Decimal(row["amount"]),
                     reference=row["reference"],
                     description=row["description"],
                     lines=tuple(lines_by_entry.get(row["entry_id"], [])),

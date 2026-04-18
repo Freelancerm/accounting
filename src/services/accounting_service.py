@@ -4,16 +4,20 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-import uuid
 
 from src.core.logging_config import get_logger
-from src.domain.models import (
+from src.domain.errors import DomainError
+from src.domain.events import (
     BusinessEventType,
-    JournalEntry,
+    CashReceipt,
+    ExpenseBill,
     Partner,
     PartnerType,
-    PostingLine,
+    SalesInvoice,
+    VendorPayment,
 )
+from src.domain.journal import JournalEntry
+from src.domain.posting_rules import PostingRules
 from src.repositories.sqlite import SQLiteRepository
 
 logger = get_logger(__name__)
@@ -24,6 +28,7 @@ class AccountingService:
 
     def __init__(self, repository: SQLiteRepository) -> None:
         self._repository = repository
+        self._posting_rules = PostingRules()
 
     def bootstrap_sample_data(self) -> None:
         """Seed minimal demo data once."""
@@ -65,21 +70,14 @@ class AccountingService:
         reference: str,
         description: str = "",
     ) -> JournalEntry:
-        self._validate_amount(amount)
-        return self._record_event(
-            event_type=BusinessEventType.SALES_INVOICE,
-            partner_type=PartnerType.CUSTOMER,
+        event = SalesInvoice(
             entry_date=entry_date,
-            partner_code=partner_code,
-            partner_name=partner_name,
+            partner=self._build_partner(partner_code, partner_name, PartnerType.CUSTOMER),
             amount=amount,
             reference=reference,
             description=description,
-            lines=(
-                PostingLine(account_code="1100", debit=amount, credit=Decimal("0.00")),
-                PostingLine(account_code="4000", debit=Decimal("0.00"), credit=amount),
-            ),
         )
+        return self._record_posted_event(event)
 
     def record_expense_bill(
         self,
@@ -91,21 +89,14 @@ class AccountingService:
         reference: str,
         description: str = "",
     ) -> JournalEntry:
-        self._validate_amount(amount)
-        return self._record_event(
-            event_type=BusinessEventType.EXPENSE_BILL,
-            partner_type=PartnerType.VENDOR,
+        event = ExpenseBill(
             entry_date=entry_date,
-            partner_code=partner_code,
-            partner_name=partner_name,
+            partner=self._build_partner(partner_code, partner_name, PartnerType.VENDOR),
             amount=amount,
             reference=reference,
             description=description,
-            lines=(
-                PostingLine(account_code="5000", debit=amount, credit=Decimal("0.00")),
-                PostingLine(account_code="2000", debit=Decimal("0.00"), credit=amount),
-            ),
         )
+        return self._record_posted_event(event)
 
     def record_cash_receipt(
         self,
@@ -117,21 +108,14 @@ class AccountingService:
         reference: str,
         description: str = "",
     ) -> JournalEntry:
-        self._validate_amount(amount)
-        return self._record_event(
-            event_type=BusinessEventType.CASH_RECEIPT,
-            partner_type=PartnerType.CUSTOMER,
+        event = CashReceipt(
             entry_date=entry_date,
-            partner_code=partner_code,
-            partner_name=partner_name,
+            partner=self._build_partner(partner_code, partner_name, PartnerType.CUSTOMER),
             amount=amount,
             reference=reference,
             description=description,
-            lines=(
-                PostingLine(account_code="1000", debit=amount, credit=Decimal("0.00")),
-                PostingLine(account_code="1100", debit=Decimal("0.00"), credit=amount),
-            ),
         )
+        return self._record_posted_event(event)
 
     def record_cash_payment(
         self,
@@ -143,21 +127,14 @@ class AccountingService:
         reference: str,
         description: str = "",
     ) -> JournalEntry:
-        self._validate_amount(amount)
-        return self._record_event(
-            event_type=BusinessEventType.CASH_PAYMENT,
-            partner_type=PartnerType.VENDOR,
+        event = VendorPayment(
             entry_date=entry_date,
-            partner_code=partner_code,
-            partner_name=partner_name,
+            partner=self._build_partner(partner_code, partner_name, PartnerType.VENDOR),
             amount=amount,
             reference=reference,
             description=description,
-            lines=(
-                PostingLine(account_code="2000", debit=amount, credit=Decimal("0.00")),
-                PostingLine(account_code="1000", debit=Decimal("0.00"), credit=amount),
-            ),
         )
+        return self._record_posted_event(event)
 
     def list_entries(self) -> list[JournalEntry]:
         """Return all journal entries."""
@@ -167,63 +144,57 @@ class AccountingService:
         """Return all partners."""
         return self._repository.list_partners()
 
-    def _record_event(
+    def _record_posted_event(
         self,
-        *,
-        event_type: BusinessEventType,
-        partner_type: PartnerType,
-        entry_date: date,
-        partner_code: str,
-        partner_name: str,
-        amount: Decimal,
-        reference: str,
-        description: str,
-        lines: tuple[PostingLine, ...],
+        event: SalesInvoice | ExpenseBill | CashReceipt | VendorPayment,
     ) -> JournalEntry:
-        normalized_code = partner_code.strip().upper()
-        normalized_name = partner_name.strip()
-        normalized_reference = reference.strip().upper()
-        normalized_amount = amount.quantize(Decimal("0.01"))
+        try:
+            entry = self._post_event(event)
+            self._repository.upsert_partner(event.partner)
+            self._repository.save_journal_entry(entry)
+            logger.info(
+                "Recorded accounting event",
+                extra={
+                    "event_type": event.event_type.value,
+                    "partner_code": event.partner.code,
+                    "reference": event.reference,
+                    "amount": str(event.amount),
+                },
+            )
+            return entry
+        except DomainError:
+            logger.warning(
+                "Rejected accounting event",
+                extra={
+                    "event_type": event.event_type.value,
+                    "partner_code": event.partner.code,
+                    "reference": event.reference,
+                },
+            )
+            raise
+        except Exception:
+            logger.exception(
+                "Unexpected service failure while recording accounting event",
+                extra={
+                    "event_type": event.event_type.value,
+                    "partner_code": event.partner.code,
+                    "reference": event.reference,
+                },
+            )
+            raise
 
-        if not normalized_code:
-            raise ValueError("partner code required")
-        if not normalized_name:
-            raise ValueError("partner name required")
-        if normalized_amount <= Decimal("0.00"):
-            raise ValueError("amount must be positive")
-        if not normalized_reference:
-            raise ValueError("reference required")
-
-        partner = Partner(
-            code=normalized_code,
-            name=normalized_name,
-            partner_type=partner_type,
-        )
-        entry = JournalEntry(
-            entry_id=str(uuid.uuid4()),
-            entry_date=entry_date,
-            event_type=event_type,
-            partner_code=partner.code,
-            partner_name=partner.name,
-            amount=normalized_amount,
-            reference=normalized_reference,
-            description=description.strip(),
-            lines=lines,
-        )
-        self._repository.upsert_partner(partner)
-        self._repository.save_journal_entry(entry)
-        logger.info(
-            "Recorded accounting event",
-            extra={
-                "event_type": event_type.value,
-                "partner_code": partner.code,
-                "reference": entry.reference,
-            },
-        )
-        return entry
+    def _post_event(
+        self,
+        event: SalesInvoice | ExpenseBill | CashReceipt | VendorPayment,
+    ) -> JournalEntry:
+        if event.event_type is BusinessEventType.SALES_INVOICE:
+            return self._posting_rules.post_sales_invoice(event)
+        if event.event_type is BusinessEventType.EXPENSE_BILL:
+            return self._posting_rules.post_expense_bill(event)
+        if event.event_type is BusinessEventType.CASH_RECEIPT:
+            return self._posting_rules.post_cash_receipt(event)
+        return self._posting_rules.post_vendor_payment(event)
 
     @staticmethod
-    def _validate_amount(amount: Decimal) -> None:
-        """Fail early before posting-line construction."""
-        if amount <= Decimal("0.00"):
-            raise ValueError("amount must be positive")
+    def _build_partner(code: str, name: str, partner_type: PartnerType) -> Partner:
+        return Partner(code=code, name=name, partner_type=partner_type)

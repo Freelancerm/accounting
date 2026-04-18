@@ -20,7 +20,7 @@ def build_partner_ledger(entries: list[JournalEntry]) -> pd.DataFrame:
                     "entry_date": entry.entry_date.isoformat(),
                     "partner_code": entry.partner_code,
                     "partner_name": entry.partner_name,
-                    "event_type": entry.event_type.value,
+                    "event_type": entry.event_type,
                     "reference": entry.reference,
                     "account_code": line.account_code,
                     "debit": float(line.debit),
