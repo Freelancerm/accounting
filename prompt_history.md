@@ -99,6 +99,23 @@
 - Rejected / changed:
   - avoided pushing complex SQL into repositories; report computations remain explicit in Python for reviewability
 
+## 2026-04-18T21:40:00Z
+
+- Goal: create clean and simple Streamlit UI shell for accounting app
+- Prompt summary: use official Streamlit docs for non-trivial APIs, add app shell with navigation for partners, transactions, and reports, keep UI thin, add helpers, notifications, empty states, and smoke coverage
+- Result accepted:
+  - added `src/ui/helpers.py` for notifications, tables, empty states, and error rendering
+  - added `src/ui/app_state.py` for UI service wiring
+  - refactored `src/ui/app_view.py` into sidebar navigation with sections for transactions, partners, and reports
+  - kept forms thin and delegated writes to service layer
+  - used report services for summaries and report sections
+  - expanded UI smoke test to verify navigation labels
+- Validation:
+  - `python3 -m compileall src tests app.py`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add flashy dashboard elements; kept layout intentionally plain and reviewer-friendly
+
 ## Entry Template
 
 - Date/time:

@@ -14,6 +14,7 @@
 - Split persistence into small repositories: `PartnerRepository`, `BusinessDocumentRepository`, `JournalEntryRepository`, backed by shared `SQLiteDatabase` bootstrap/helper.
 - Split orchestration into thin services: `PartnerService`, `SalesService`, `PurchaseService`, `CashService`, with shared `ServiceWorkflow` for transactional save + logging.
 - Keep reporting in dedicated report services with simple DTO/view models and lightweight DataFrame adapters only at package edge for UI compatibility.
+- Keep Streamlit UI as thin shell with sidebar navigation, forms, tabs, and reusable UI helpers that call services and report services directly.
 - Keep Streamlit UI limited to stable primitives: `st.form`, `st.tabs`, `st.dataframe`, `st.metric`, `st.selectbox`, `st.date_input`, `st.number_input`, `st.text_input`.
 
 ## Simplifications
@@ -32,4 +33,5 @@
 - Shared DB helper plus small repositories keeps schema explicit and reviewable, but adds thin coordination layer instead of one-file persistence.
 - Thin services avoid god-service growth, but compatibility facade `AccountingService` still remains for current UI until UI gets direct service wiring.
 - Report DTOs keep report logic separate from UI, but temporary DataFrame adapters remain to avoid large UI rewrite in same step.
+- `st.rerun()` used sparingly after successful form submissions to refresh top-of-page summaries and tables without burying business logic in UI.
 - Reporting stays simple and readable instead of fully general ledger-grade.

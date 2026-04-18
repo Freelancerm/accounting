@@ -1,4 +1,4 @@
-"""Streamlit view for minimal accounting app."""
+"""Streamlit UI shell for minimal accounting app."""
 
 from __future__ import annotations
 
@@ -8,68 +8,180 @@ from decimal import Decimal
 import streamlit as st
 
 from src.core.settings import get_settings
-from src.domain.models import BusinessEventType, CHART_OF_ACCOUNTS, JournalEntry
-from src.reporting.partner_ledger import build_partner_ledger
-from src.reporting.profit_and_loss import build_profit_and_loss
-from src.repositories.sqlite import SQLiteRepository
-from src.services.accounting_service import AccountingService
+from src.domain.events import BusinessEventType, PartnerType
+from src.reporting.partner_ledger import PartnerLedgerReport
+from src.reporting.profit_and_loss import ProfitAndLossReport
+from src.services.commands import (
+    CreatePartnerCommand,
+    CustomerReceiptCommand,
+    ExpenseBillCommand,
+    SalesInvoiceCommand,
+    VendorPaymentCommand,
+)
+from src.ui.app_state import AppServices, get_app_services
+from src.ui.helpers import queue_notification, render_empty_state, render_error, render_notification, render_table
 
 
 def render_app() -> None:
-    """Render full Streamlit page."""
+    """Render full Streamlit application shell."""
     settings = get_settings()
     st.set_page_config(page_title=settings.app_title, layout="wide")
 
+    services = get_app_services()
+    services.accounting.bootstrap_sample_data()
+
     st.title(settings.app_title)
-    st.caption("Business events -> balanced postings -> Profit and Loss + partner ledger.")
+    st.caption("Minimal accounting review app: partners, transactions, and reports.")
+    render_notification()
 
-    service = AccountingService(SQLiteRepository())
-    service.bootstrap_sample_data()
-    entries = service.list_entries()
+    section = st.sidebar.radio(
+        "Navigation",
+        options=["Transactions", "Partners", "Reports"],
+        key="main_navigation",
+    )
 
-    left, right = st.columns([1, 1])
-    with left:
-        _render_event_form(service)
-    with right:
-        _render_summary(entries)
+    entries = services.accounting.list_entries()
+    _render_summary(entries)
 
-    tabs = st.tabs(["Business Events", "Journal Postings", "Reports", "Partners"])
+    if section == "Transactions":
+        _render_transactions_section(services, entries)
+        return
+    if section == "Partners":
+        _render_partners_section(services)
+        return
+    _render_reports_section(entries)
 
-    with tabs[0]:
-        st.subheader("Recorded Events")
-        st.dataframe([entry.to_journal_row() for entry in entries], use_container_width=True)
 
-    with tabs[1]:
-        st.subheader("Balanced Journal Postings")
-        posting_rows = [row for entry in entries for row in entry.to_posting_rows()]
-        st.dataframe(posting_rows, use_container_width=True)
-        st.caption(f"Fixed chart of accounts: {CHART_OF_ACCOUNTS}")
+def _render_summary(entries) -> None:
+    report = ProfitAndLossReport().build(entries)
+    st.subheader("Summary")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Revenue", f"${float(report.revenue):,.2f}")
+    col2.metric("Expense", f"${float(report.expense):,.2f}")
+    col3.metric("Net Result", f"${float(report.net_result):,.2f}")
 
-    with tabs[2]:
-        pnl_col, ledger_col = st.columns(2)
-        with pnl_col:
-            st.subheader("Profit and Loss")
-            st.dataframe(build_profit_and_loss(entries), use_container_width=True)
-        with ledger_col:
-            st.subheader("Partner Ledger")
-            st.dataframe(build_partner_ledger(entries), use_container_width=True)
 
-    with tabs[3]:
+def _render_transactions_section(services: AppServices, entries) -> None:
+    form_col, data_col = st.columns([1, 2])
+
+    with form_col:
+        _render_transaction_form(services)
+
+    with data_col:
+        event_tab, journal_tab = st.tabs(["Business Events", "Journal Postings"])
+
+        with event_tab:
+            st.subheader("Recorded Events")
+            render_table(
+                [entry.to_journal_row() for entry in entries],
+                empty_message="No business events yet.",
+            )
+
+        with journal_tab:
+            st.subheader("Journal Postings")
+            render_table(
+                [row for entry in entries for row in entry.to_posting_rows()],
+                empty_message="No journal postings yet.",
+            )
+
+
+def _render_partners_section(services: AppServices) -> None:
+    form_col, list_col = st.columns([1, 2])
+
+    with form_col:
+        st.subheader("Create Partner")
+        with st.form("partner_form"):
+            partner_code = st.text_input("Partner Code", placeholder="CUST-001")
+            partner_name = st.text_input("Partner Name", placeholder="Acme Client")
+            partner_type = st.selectbox(
+                "Partner Type",
+                options=[partner_type.value for partner_type in PartnerType],
+                format_func=lambda value: value.title(),
+            )
+            submitted = st.form_submit_button("Save Partner")
+
+            if submitted:
+                try:
+                    services.partners.create_partner(
+                        CreatePartnerCommand(
+                            code=partner_code,
+                            name=partner_name,
+                            partner_type=PartnerType(partner_type),
+                        )
+                    )
+                    queue_notification("success", "Partner saved")
+                    st.rerun()
+                except Exception as error:
+                    render_error("Could not save partner", error)
+
+    with list_col:
         st.subheader("Partners")
-        partners = [
+        render_table(
+            [
+                {
+                    "code": partner.code,
+                    "name": partner.name,
+                    "partner_type": partner.partner_type.value,
+                }
+                for partner in services.partners.list_partners()
+            ],
+            empty_message="No partners yet.",
+        )
+
+
+def _render_reports_section(entries) -> None:
+    report_tab, ledger_tab = st.tabs(["Profit and Loss", "Partner Ledger"])
+
+    with report_tab:
+        st.subheader("Profit and Loss")
+        pnl_report = ProfitAndLossReport().build(entries)
+        render_table(
+            [
+                {"line_item": line.line_item, "amount": float(line.amount)}
+                for line in pnl_report.lines
+            ],
+            empty_message="No Profit and Loss data yet.",
+        )
+
+    with ledger_tab:
+        st.subheader("Partner Ledger")
+        ledger_report = PartnerLedgerReport().build(entries)
+        movement_rows = [
             {
-                "code": partner.code,
-                "name": partner.name,
-                "partner_type": partner.partner_type.value,
+                "entry_date": movement.entry_date,
+                "partner_code": movement.partner_code,
+                "partner_name": movement.partner_name,
+                "event_type": movement.event_type,
+                "reference": movement.reference,
+                "account_code": movement.account_code,
+                "debit": float(movement.debit),
+                "credit": float(movement.credit),
+                "running_balance": float(movement.running_balance),
             }
-            for partner in service.list_partners()
+            for movement in ledger_report.movements
         ]
-        st.dataframe(partners, use_container_width=True)
+        render_table(movement_rows, empty_message="No partner ledger data yet.")
+
+        if ledger_report.balances:
+            st.caption("Current partner balances")
+            render_table(
+                [
+                    {
+                        "partner_code": balance.partner_code,
+                        "partner_name": balance.partner_name,
+                        "balance": float(balance.balance),
+                    }
+                    for balance in ledger_report.balances
+                ],
+                empty_message="No partner balances yet.",
+            )
+        else:
+            render_empty_state("No partner balances yet.")
 
 
-def _render_event_form(service: AccountingService) -> None:
-    st.subheader("Create Business Event")
-    with st.form("journal_entry_form"):
+def _render_transaction_form(services: AppServices) -> None:
+    st.subheader("Create Transaction")
+    with st.form("transaction_form"):
         entry_date = st.date_input("Date", value=date.today())
         event_type = st.selectbox(
             "Business Event",
@@ -81,12 +193,12 @@ def _render_event_form(service: AccountingService) -> None:
         amount = st.number_input("Amount", min_value=0.0, value=0.0, step=100.0, format="%.2f")
         reference = st.text_input("Reference", placeholder="INV-1001")
         description = st.text_input("Description", placeholder="Optional note")
-        submitted = st.form_submit_button("Post Event")
+        submitted = st.form_submit_button("Post Transaction")
 
         if submitted:
             try:
-                _submit_event(
-                    service=service,
+                _submit_transaction(
+                    services=services,
                     event_type=BusinessEventType(event_type),
                     entry_date=entry_date,
                     partner_code=partner_code,
@@ -95,27 +207,15 @@ def _render_event_form(service: AccountingService) -> None:
                     reference=reference,
                     description=description,
                 )
-                st.success("Balanced journal entry posted")
-            except ValueError as exc:
-                st.error(str(exc))
+                queue_notification("success", "Balanced journal entry posted")
+                st.rerun()
+            except Exception as error:
+                render_error("Could not post transaction", error)
 
 
-def _render_summary(entries: list[JournalEntry]) -> None:
-    pnl = build_profit_and_loss(entries)
-    revenue = float(pnl.loc[pnl["line_item"] == "Revenue", "amount"].iloc[0])
-    expense = float(pnl.loc[pnl["line_item"] == "Expense", "amount"].iloc[0])
-    net_result = float(pnl.loc[pnl["line_item"] == "Net Result", "amount"].iloc[0])
-
-    st.subheader("Summary")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Revenue", f"${revenue:,.2f}")
-    col2.metric("Expense", f"${expense:,.2f}")
-    col3.metric("Net Result", f"${net_result:,.2f}")
-
-
-def _submit_event(
+def _submit_transaction(
     *,
-    service: AccountingService,
+    services: AppServices,
     event_type: BusinessEventType,
     entry_date: date,
     partner_code: str,
@@ -125,27 +225,43 @@ def _submit_event(
     description: str,
 ) -> None:
     if event_type == BusinessEventType.SALES_INVOICE:
-        service.record_sales_invoice(
-            entry_date=entry_date,
-            partner_code=partner_code,
-            partner_name=partner_name,
-            amount=amount,
-            reference=reference,
-            description=description,
+        services.sales.create_sales_invoice(
+            SalesInvoiceCommand(
+                entry_date=entry_date,
+                partner_code=partner_code,
+                partner_name=partner_name,
+                amount=amount,
+                reference=reference,
+                description=description,
+            )
         )
         return
     if event_type == BusinessEventType.EXPENSE_BILL:
-        service.record_expense_bill(
-            entry_date=entry_date,
-            partner_code=partner_code,
-            partner_name=partner_name,
-            amount=amount,
-            reference=reference,
-            description=description,
+        services.purchases.create_expense_bill(
+            ExpenseBillCommand(
+                entry_date=entry_date,
+                partner_code=partner_code,
+                partner_name=partner_name,
+                amount=amount,
+                reference=reference,
+                description=description,
+            )
         )
         return
     if event_type == BusinessEventType.CASH_RECEIPT:
-        service.record_cash_receipt(
+        services.cash.register_customer_receipt(
+            CustomerReceiptCommand(
+                entry_date=entry_date,
+                partner_code=partner_code,
+                partner_name=partner_name,
+                amount=amount,
+                reference=reference,
+                description=description,
+            )
+        )
+        return
+    services.cash.register_vendor_payment(
+        VendorPaymentCommand(
             entry_date=entry_date,
             partner_code=partner_code,
             partner_name=partner_name,
@@ -153,12 +269,4 @@ def _submit_event(
             reference=reference,
             description=description,
         )
-        return
-    service.record_cash_payment(
-        entry_date=entry_date,
-        partner_code=partner_code,
-        partner_name=partner_name,
-        amount=amount,
-        reference=reference,
-        description=description,
     )

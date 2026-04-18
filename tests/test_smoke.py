@@ -188,3 +188,5 @@ def test_app_smoke_renders_title() -> None:
     app.run()
     assert not app.exception
     assert app.title[0].value == "Minimal Accounting"
+    assert app.radio[0].label == "Navigation"
+    assert app.radio[0].options == ["Transactions", "Partners", "Reports"]
