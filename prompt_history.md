@@ -116,6 +116,20 @@
 - Rejected / changed:
   - did not add flashy dashboard elements; kept layout intentionally plain and reviewer-friendly
 
+## 2026-04-18T21:50:00Z
+
+- Goal: complete partner-management UI behavior
+- Prompt summary: implement create partner form, partner list, useful type filter, empty states, validation feedback, and keep UI thin
+- Result accepted:
+  - partner form remains service-driven through `PartnerService`
+  - added type filter for partner list
+  - refined empty-state message to reflect active filter
+  - kept validation and failure handling in service/UI helper boundary
+- Validation:
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add full partner edit/delete workflow; kept scope aligned with assignment
+
 ## Entry Template
 
 - Date/time:

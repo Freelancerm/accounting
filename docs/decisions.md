@@ -15,6 +15,7 @@
 - Split orchestration into thin services: `PartnerService`, `SalesService`, `PurchaseService`, `CashService`, with shared `ServiceWorkflow` for transactional save + logging.
 - Keep reporting in dedicated report services with simple DTO/view models and lightweight DataFrame adapters only at package edge for UI compatibility.
 - Keep Streamlit UI as thin shell with sidebar navigation, forms, tabs, and reusable UI helpers that call services and report services directly.
+- Keep partner management intentionally small: single create form, simple list, and type filter in UI instead of full CRUD workflow.
 - Keep Streamlit UI limited to stable primitives: `st.form`, `st.tabs`, `st.dataframe`, `st.metric`, `st.selectbox`, `st.date_input`, `st.number_input`, `st.text_input`.
 
 ## Simplifications

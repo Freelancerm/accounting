@@ -116,16 +116,28 @@ def _render_partners_section(services: AppServices) -> None:
 
     with list_col:
         st.subheader("Partners")
+        filter_value = st.selectbox(
+            "Filter by Type",
+            options=["all", *[partner_type.value for partner_type in PartnerType]],
+            format_func=lambda value: "All" if value == "all" else value.title(),
+            key="partner_type_filter",
+        )
+        partners = [
+            {
+                "code": partner.code,
+                "name": partner.name,
+                "partner_type": partner.partner_type.value,
+            }
+            for partner in services.partners.list_partners()
+            if filter_value == "all" or partner.partner_type.value == filter_value
+        ]
         render_table(
-            [
-                {
-                    "code": partner.code,
-                    "name": partner.name,
-                    "partner_type": partner.partner_type.value,
-                }
-                for partner in services.partners.list_partners()
-            ],
-            empty_message="No partners yet.",
+            partners,
+            empty_message=(
+                "No partners yet."
+                if filter_value == "all"
+                else f"No {filter_value} partners yet."
+            ),
         )
 
 
