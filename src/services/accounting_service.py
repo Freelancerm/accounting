@@ -7,17 +7,9 @@ from decimal import Decimal
 
 from src.core.logging_config import get_logger
 from src.domain.errors import DomainError
-from src.domain.events import (
-    BusinessEventType,
-    CashReceipt,
-    ExpenseBill,
-    Partner,
-    PartnerType,
-    SalesInvoice,
-    VendorPayment,
-)
+from src.domain.events import CashReceipt, ExpenseBill, Partner, PartnerType, SalesInvoice, VendorPayment
 from src.domain.journal import JournalEntry
-from src.domain.posting_rules import PostingRules
+from src.domain.posting_rules import PostingService
 from src.repositories.sqlite import SQLiteRepository
 
 logger = get_logger(__name__)
@@ -28,7 +20,7 @@ class AccountingService:
 
     def __init__(self, repository: SQLiteRepository) -> None:
         self._repository = repository
-        self._posting_rules = PostingRules()
+        self._posting_service = PostingService()
 
     def bootstrap_sample_data(self) -> None:
         """Seed minimal demo data once."""
@@ -149,7 +141,7 @@ class AccountingService:
         event: SalesInvoice | ExpenseBill | CashReceipt | VendorPayment,
     ) -> JournalEntry:
         try:
-            entry = self._post_event(event)
+            entry = self._posting_service.post(event)
             self._repository.upsert_partner(event.partner)
             self._repository.save_journal_entry(entry)
             logger.info(
@@ -182,18 +174,6 @@ class AccountingService:
                 },
             )
             raise
-
-    def _post_event(
-        self,
-        event: SalesInvoice | ExpenseBill | CashReceipt | VendorPayment,
-    ) -> JournalEntry:
-        if event.event_type is BusinessEventType.SALES_INVOICE:
-            return self._posting_rules.post_sales_invoice(event)
-        if event.event_type is BusinessEventType.EXPENSE_BILL:
-            return self._posting_rules.post_expense_bill(event)
-        if event.event_type is BusinessEventType.CASH_RECEIPT:
-            return self._posting_rules.post_cash_receipt(event)
-        return self._posting_rules.post_vendor_payment(event)
 
     @staticmethod
     def _build_partner(code: str, name: str, partner_type: PartnerType) -> Partner:

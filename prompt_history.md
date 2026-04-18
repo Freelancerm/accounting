@@ -31,6 +31,24 @@
 - Rejected / changed:
   - kept existing SQLite repository compatible with new domain model instead of adding new persistence abstraction for this step
 
+## 2026-04-18T20:50:00Z
+
+- Goal: isolate posting engine that converts business events into balanced journal entries
+- Prompt summary: implement posting service with clean interface, journal line generation, unsupported-event handling, service-level logging, workflow tests, and brief design note
+- Result accepted:
+  - refactored posting engine into `PostingService`
+  - added single `post(event)` interface with explicit handlers for supported event types
+  - kept per-event posting methods for readability and extension
+  - made unsupported event types fail with explicit domain exception
+  - updated service orchestration to call posting engine directly
+  - added posting-engine tests for supported events and unsupported-event rejection
+  - documented posting-engine choice in `docs/decisions.md`
+- Validation:
+  - `python3 -m compileall src tests app.py`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - preserved compatibility alias `PostingRules = PostingService` to avoid unnecessary breakage while refactoring
+
 ## Entry Template
 
 - Date/time:

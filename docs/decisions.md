@@ -10,6 +10,7 @@
 
 - Use SQLite with explicit schema through `sqlite3` from standard library.
 - Keep domain logic in dataclasses and service layer.
+- Isolate posting engine in `PostingService` with one `post(event)` entrypoint and explicit per-event handlers.
 - Keep Streamlit UI limited to stable primitives: `st.form`, `st.tabs`, `st.dataframe`, `st.metric`, `st.selectbox`, `st.date_input`, `st.number_input`, `st.text_input`.
 
 ## Simplifications
@@ -23,4 +24,5 @@
 
 - SQLite keeps setup low-friction but not multi-user production grade.
 - On-demand partner creation reduces UI clutter but skips master-data workflows.
+- Type-dispatch posting engine keeps extension local, but unsupported events fail fast instead of being silently ignored.
 - Reporting stays simple and readable instead of fully general ledger-grade.

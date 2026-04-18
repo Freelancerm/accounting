@@ -1,8 +1,9 @@
-"""Explicit posting rules for minimal accounting events."""
+"""Explicit posting engine for minimal accounting events."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 from uuid import uuid4
 
 from src.domain.accounts import (
@@ -12,13 +13,27 @@ from src.domain.accounts import (
     EXPENSE,
     REVENUE,
 )
-from src.domain.events import CashReceipt, ExpenseBill, SalesInvoice, VendorPayment
+from src.domain.errors import InvalidPostingError
+from src.domain.events import BusinessEvent, CashReceipt, ExpenseBill, SalesInvoice, VendorPayment
 from src.domain.journal import JournalEntry, JournalLine
 
 
 @dataclass(frozen=True)
-class PostingRules:
-    """Factory for fixed double-entry posting rules."""
+class PostingService:
+    """Posting engine for supported business events."""
+
+    def post(self, event: BusinessEvent) -> JournalEntry:
+        """Convert supported event into balanced journal entry."""
+        handlers: dict[type[BusinessEvent], Callable[[BusinessEvent], JournalEntry]] = {
+            SalesInvoice: lambda item: self.post_sales_invoice(item),
+            ExpenseBill: lambda item: self.post_expense_bill(item),
+            CashReceipt: lambda item: self.post_cash_receipt(item),
+            VendorPayment: lambda item: self.post_vendor_payment(item),
+        }
+        handler = handlers.get(type(event))
+        if handler is None:
+            raise InvalidPostingError(f"unsupported event type: {type(event).__name__}")
+        return handler(event)
 
     def post_sales_invoice(self, event: SalesInvoice) -> JournalEntry:
         return JournalEntry(
@@ -79,3 +94,6 @@ class PostingRules:
                 JournalLine(account=CASH, credit=event.amount),
             ),
         )
+
+
+PostingRules = PostingService
