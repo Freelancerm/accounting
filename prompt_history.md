@@ -175,6 +175,25 @@
 - Rejected / changed:
   - did not add new feature surface or heavy abstractions; kept hardening focused on reliability and clarity
 
+## 2026-04-18T22:35:00Z
+
+- Goal: finalize Docker support and reviewer-friendly runtime path
+- Prompt summary: review Dockerfile and Docker docs, ensure Streamlit startup command is correct, improve ignore rules, and add lightweight smoke verification
+- Result accepted:
+  - refined Docker image runtime env and kept direct `streamlit run app.py` startup on `0.0.0.0:8501`
+  - added lightweight container healthcheck against Streamlit port
+  - tightened `.dockerignore` for local caches, build artifacts, logs, and local data
+  - updated README Docker and compose notes to match verified runtime behavior
+  - verified image build and container startup successfully through local Docker smoke run
+- Validation:
+  - `docker build -t minimal-accounting:local .`
+  - `docker run --rm -d -p 8501:8501 --name minimal-accounting-smoke minimal-accounting:local`
+  - `docker logs minimal-accounting-smoke`
+  - `docker stop minimal-accounting-smoke`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add orchestration complexity or separate health endpoint; lightweight port check sufficient for assignment scope
+
 ## Entry Template
 
 - Date/time:

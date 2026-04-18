@@ -20,6 +20,7 @@
 - Report UI stays simple: metrics plus tables for P&L, movement table plus partner filter and balances for ledger.
 - Hardening prefers better validation, integration coverage, and clearer logs over new features or new layers.
 - Keep Streamlit UI limited to stable primitives: `st.form`, `st.tabs`, `st.dataframe`, `st.metric`, `st.selectbox`, `st.date_input`, `st.number_input`, `st.text_input`.
+- Keep Docker runtime single-container and simple: install pinned requirements, copy project files directly, run `streamlit run app.py`, and use a lightweight TCP healthcheck on port `8501`.
 
 ## Simplifications
 

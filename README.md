@@ -81,8 +81,12 @@ pytest -q
 
 ```bash
 docker build -t minimal-accounting .
-docker run --rm -p 8501:8501 minimal-accounting
+docker run --rm -p 8501:8501 -v minimal_accounting_data:/app/data minimal-accounting
 ```
+
+App available at `http://localhost:8501`
+
+Container includes lightweight healthcheck against local Streamlit port.
 
 ## Docker Compose
 
@@ -91,6 +95,12 @@ docker compose up --build
 ```
 
 SQLite lives inside app container and persists through named volume `sqlite_data`.
+
+Compose also exposes the app at `http://localhost:8501`.
+
+For quick verification after startup:
+- check container health with `docker ps`
+- inspect app logs with `docker logs <container-name>`
 
 ## Limitations / Non-Goals
 
