@@ -6,7 +6,7 @@ from src.core.logging_config import get_logger
 from src.domain.errors import DomainError
 from src.domain.events import PartnerType, SalesInvoice
 from src.repositories.sqlite import SQLiteRepository
-from src.services.commands import SalesInvoiceCommand
+from src.services.commands import SalesInvoiceCommand, ServiceResult
 from src.services.workflow_support import ServiceWorkflow
 
 logger = get_logger(__name__)
@@ -18,7 +18,7 @@ class SalesService:
     def __init__(self, repository: SQLiteRepository) -> None:
         self._workflow = ServiceWorkflow(repository)
 
-    def create_sales_invoice(self, command: SalesInvoiceCommand):
+    def create_sales_invoice(self, command: SalesInvoiceCommand) -> ServiceResult:
         try:
             event = SalesInvoice(
                 entry_date=command.entry_date,
@@ -31,10 +31,10 @@ class SalesService:
                 reference=command.reference,
                 description=command.description,
             )
-            return self._workflow.record_event(event)
         except DomainError:
             logger.warning(
                 "Rejected sales command",
                 extra={"partner_code": command.partner_code, "reference": command.reference},
             )
             raise
+        return self._workflow.record_event(event)

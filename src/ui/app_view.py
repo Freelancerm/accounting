@@ -8,7 +8,7 @@ from decimal import Decimal
 import streamlit as st
 
 from src.core.settings import get_settings
-from src.domain.events import BusinessEventType, PartnerType
+from src.domain.events import BusinessEventType, Partner, PartnerType
 from src.reporting.partner_ledger import PartnerLedgerReport
 from src.reporting.profit_and_loss import ProfitAndLossReport
 from src.services.commands import (
@@ -56,9 +56,9 @@ def _render_summary(entries) -> None:
     report = ProfitAndLossReport().build(entries)
     st.subheader("Summary")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Revenue", f"${float(report.revenue):,.2f}")
-    col2.metric("Expense", f"${float(report.expense):,.2f}")
-    col3.metric("Net Result", f"${float(report.net_result):,.2f}")
+    col1.metric("Revenue", _format_currency(report.revenue))
+    col2.metric("Expense", _format_currency(report.expense))
+    col3.metric("Net Result", _format_currency(report.net_result))
 
 
 def _render_transactions_section(services: AppServices, entries) -> None:
@@ -122,17 +122,20 @@ def _render_partners_section(services: AppServices) -> None:
             format_func=lambda value: "All" if value == "all" else value.title(),
             key="partner_type_filter",
         )
-        partners = [
+        filtered_partners = _list_partners(
+            services,
+            None if filter_value == "all" else PartnerType(filter_value),
+        )
+        partner_rows = [
             {
                 "code": partner.code,
                 "name": partner.name,
                 "partner_type": partner.partner_type.value,
             }
-            for partner in services.partners.list_partners()
-            if filter_value == "all" or partner.partner_type.value == filter_value
+            for partner in filtered_partners
         ]
         render_table(
-            partners,
+            partner_rows,
             empty_message=(
                 "No partners yet."
                 if filter_value == "all"
@@ -148,12 +151,12 @@ def _render_reports_section(entries) -> None:
         st.subheader("Profit and Loss")
         pnl_report = ProfitAndLossReport().build(entries)
         metric_col1, metric_col2, metric_col3 = st.columns(3)
-        metric_col1.metric("Revenue", f"${float(pnl_report.revenue):,.2f}")
-        metric_col2.metric("Expense", f"${float(pnl_report.expense):,.2f}")
-        metric_col3.metric("Net Result", f"${float(pnl_report.net_result):,.2f}")
+        metric_col1.metric("Revenue", _format_currency(pnl_report.revenue))
+        metric_col2.metric("Expense", _format_currency(pnl_report.expense))
+        metric_col3.metric("Net Result", _format_currency(pnl_report.net_result))
         render_table(
             [
-                {"line_item": line.line_item, "amount": float(line.amount)}
+                {"line_item": line.line_item, "amount": _format_currency(line.amount)}
                 for line in pnl_report.lines
             ],
             empty_message="No Profit and Loss data yet.",
@@ -225,7 +228,9 @@ def _render_transaction_form(services: AppServices) -> None:
             options=[event.value for event in BusinessEventType],
             format_func=lambda value: value.replace("_", " ").title(),
         )
-        available_partners = _partner_options_for_event(services, BusinessEventType(event_type))
+        selected_event_type = BusinessEventType(event_type)
+        partners = _list_partners(services)
+        available_partners = _partner_options_for_event(partners, selected_event_type)
         partner_selection = st.selectbox(
             "Existing Partner (Optional)",
             options=["manual", *available_partners],
@@ -242,14 +247,14 @@ def _render_transaction_form(services: AppServices) -> None:
         if submitted:
             try:
                 resolved_partner_code, resolved_partner_name = _resolve_partner_input(
-                    services=services,
+                    partners=partners,
                     partner_selection=partner_selection,
                     fallback_code=partner_code,
                     fallback_name=partner_name,
                 )
                 _submit_transaction(
                     services=services,
-                    event_type=BusinessEventType(event_type),
+                    event_type=selected_event_type,
                     entry_date=entry_date,
                     partner_code=resolved_partner_code,
                     partner_name=resolved_partner_name,
@@ -322,22 +327,18 @@ def _submit_transaction(
     )
 
 
-def _partner_options_for_event(services: AppServices, event_type: BusinessEventType) -> list[str]:
-    expected_type = (
-        PartnerType.CUSTOMER
-        if event_type in {BusinessEventType.SALES_INVOICE, BusinessEventType.CASH_RECEIPT}
-        else PartnerType.VENDOR
-    )
+def _partner_options_for_event(partners: list[Partner], event_type: BusinessEventType) -> list[str]:
+    expected_type = _partner_type_for_event(event_type)
     return [
         f"{partner.code} | {partner.name}"
-        for partner in services.partners.list_partners()
+        for partner in partners
         if partner.partner_type is expected_type
     ]
 
 
 def _resolve_partner_input(
     *,
-    services: AppServices,
+    partners: list[Partner],
     partner_selection: str,
     fallback_code: str,
     fallback_name: str,
@@ -348,7 +349,7 @@ def _resolve_partner_input(
 
     partner_code = partner_selection.split(" | ", maxsplit=1)[0]
     partner = next(
-        (partner for partner in services.partners.list_partners() if partner.code == partner_code),
+        (partner for partner in partners if partner.code == partner_code),
         None,
     )
     if partner is None:
@@ -361,3 +362,20 @@ def _validate_transaction_input(partner_code: str, partner_name: str) -> None:
         raise ValueError("partner code required")
     if not partner_name.strip():
         raise ValueError("partner name required")
+
+
+def _partner_type_for_event(event_type: BusinessEventType) -> PartnerType:
+    if event_type in {BusinessEventType.SALES_INVOICE, BusinessEventType.CASH_RECEIPT}:
+        return PartnerType.CUSTOMER
+    return PartnerType.VENDOR
+
+
+def _list_partners(services: AppServices, partner_type: PartnerType | None = None) -> list[Partner]:
+    partners = services.partners.list_partners()
+    if partner_type is None:
+        return partners
+    return [partner for partner in partners if partner.partner_type is partner_type]
+
+
+def _format_currency(amount: Decimal) -> str:
+    return f"${float(amount):,.2f}"

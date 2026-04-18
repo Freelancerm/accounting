@@ -208,6 +208,21 @@
 - Rejected / changed:
   - did not add features or promise workflows that are not present in the code
 
+## 2026-04-18T23:05:00Z
+
+- Goal: perform final production-minded cleanup review
+- Prompt summary: review duplication, oversized files, naming, exception/logging consistency, tests, and docs; apply only safe cleanup improvements without changing scope
+- Result accepted:
+  - reduced duplicate warning logs by narrowing service-level exception handling to event construction only
+  - added explicit return types to service methods for readability
+  - cleaned `src/ui/app_view.py` with shared helpers for currency formatting, partner filtering, and event-to-partner-type mapping
+  - removed repeated partner repository reads inside transaction form flow
+  - rechecked README accuracy and prompt history completeness during final sweep
+- Validation:
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not rewrite large architecture pieces or change UI behavior; cleanup stayed small and behavior-preserving
+
 ## Entry Template
 
 - Date/time:
