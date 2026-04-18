@@ -17,6 +17,7 @@
 - Keep Streamlit UI as thin shell with sidebar navigation, forms, tabs, and reusable UI helpers that call services and report services directly.
 - Keep partner management intentionally small: single create form, simple list, and type filter in UI instead of full CRUD workflow.
 - Transaction UI supports optional existing-partner selection filtered by event type, with manual partner entry fallback to keep form usable before master data exists.
+- Report UI stays simple: metrics plus tables for P&L, movement table plus partner filter and balances for ledger.
 - Keep Streamlit UI limited to stable primitives: `st.form`, `st.tabs`, `st.dataframe`, `st.metric`, `st.selectbox`, `st.date_input`, `st.number_input`, `st.text_input`.
 
 ## Simplifications

@@ -147,6 +147,10 @@ def _render_reports_section(entries) -> None:
     with report_tab:
         st.subheader("Profit and Loss")
         pnl_report = ProfitAndLossReport().build(entries)
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+        metric_col1.metric("Revenue", f"${float(pnl_report.revenue):,.2f}")
+        metric_col2.metric("Expense", f"${float(pnl_report.expense):,.2f}")
+        metric_col3.metric("Net Result", f"${float(pnl_report.net_result):,.2f}")
         render_table(
             [
                 {"line_item": line.line_item, "amount": float(line.amount)}
@@ -158,6 +162,12 @@ def _render_reports_section(entries) -> None:
     with ledger_tab:
         st.subheader("Partner Ledger")
         ledger_report = PartnerLedgerReport().build(entries)
+        ledger_partner_filter = st.selectbox(
+            "Filter Ledger by Partner",
+            options=["all", *[balance.partner_code for balance in ledger_report.balances]],
+            format_func=lambda value: "All Partners" if value == "all" else value,
+            key="ledger_partner_filter",
+        )
         movement_rows = [
             {
                 "entry_date": movement.entry_date,
@@ -171,24 +181,39 @@ def _render_reports_section(entries) -> None:
                 "running_balance": float(movement.running_balance),
             }
             for movement in ledger_report.movements
+            if ledger_partner_filter == "all" or movement.partner_code == ledger_partner_filter
         ]
-        render_table(movement_rows, empty_message="No partner ledger data yet.")
+        render_table(
+            movement_rows,
+            empty_message=(
+                "No partner ledger data yet."
+                if ledger_partner_filter == "all"
+                else f"No ledger movements for {ledger_partner_filter}."
+            ),
+        )
 
-        if ledger_report.balances:
+        filtered_balances = [
+            {
+                "partner_code": balance.partner_code,
+                "partner_name": balance.partner_name,
+                "balance": float(balance.balance),
+            }
+            for balance in ledger_report.balances
+            if ledger_partner_filter == "all" or balance.partner_code == ledger_partner_filter
+        ]
+
+        if filtered_balances:
             st.caption("Current partner balances")
             render_table(
-                [
-                    {
-                        "partner_code": balance.partner_code,
-                        "partner_name": balance.partner_name,
-                        "balance": float(balance.balance),
-                    }
-                    for balance in ledger_report.balances
-                ],
+                filtered_balances,
                 empty_message="No partner balances yet.",
             )
         else:
-            render_empty_state("No partner balances yet.")
+            render_empty_state(
+                "No partner balances yet."
+                if ledger_partner_filter == "all"
+                else f"No partner balance for {ledger_partner_filter}."
+            )
 
 
 def _render_transaction_form(services: AppServices) -> None:

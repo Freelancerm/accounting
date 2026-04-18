@@ -145,6 +145,20 @@
 - Rejected / changed:
   - did not add separate per-event pages; kept one small shared transaction form to avoid duplicated UI logic
 
+## 2026-04-18T22:10:00Z
+
+- Goal: complete reporting UI behavior
+- Prompt summary: expose Profit and Loss and partner ledger clearly in Streamlit, keep UI thin, add ledger partner filter, and preserve reporting logic outside UI
+- Result accepted:
+  - added P&L metrics in reporting section for quick readability
+  - added partner filter for ledger movements and balances
+  - refined report empty states to reflect current filter
+  - kept calculations entirely in reporting layer
+- Validation:
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add explicit refresh controls; Streamlit rerender from normal interaction already sufficient for this small app
+
 ## Entry Template
 
 - Date/time:
