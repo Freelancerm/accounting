@@ -194,6 +194,20 @@
 - Rejected / changed:
   - did not add orchestration complexity or separate health endpoint; lightweight port check sufficient for assignment scope
 
+## 2026-04-18T22:50:00Z
+
+- Goal: finalize repository docs for submission
+- Prompt summary: tighten README, decisions, and prompt history; add sample usage, architecture overview, testing instructions, and verify naming consistency across repository
+- Result accepted:
+  - expanded README with reviewer flow, architecture overview, sample usage, product/technical decisions, and clearer testing guidance
+  - tightened `docs/decisions.md` into concise product, technical, simplification, and tradeoff notes aligned with actual implementation
+  - reviewed naming consistency across docs and implementation for key terms such as Profit and Loss, partner ledger, Docker commands, and compatibility facades
+  - kept prompt history populated and appended final submission-preparation step
+- Validation:
+  - manual review of `README.md`, `docs/decisions.md`, `prompt_history.md`, `docs/architecture.md`, and repository file list
+- Rejected / changed:
+  - did not add features or promise workflows that are not present in the code
+
 ## Entry Template
 
 - Date/time:
