@@ -5,7 +5,6 @@ from __future__ import annotations
 from src.core.logging_config import get_logger
 from src.domain.errors import DomainError
 from src.domain.events import BusinessEvent, Partner, PartnerType
-from src.domain.journal import JournalEntry
 from src.domain.posting_rules import PostingService
 from src.repositories.sqlite import SQLiteRepository
 from src.services.commands import ServiceResult
@@ -20,7 +19,8 @@ class ServiceWorkflow:
         self._repository = repository
         self._posting_service = posting_service or PostingService()
 
-    def build_partner(self, code: str, name: str, partner_type: PartnerType) -> Partner:
+    @staticmethod
+    def build_partner(code: str, name: str, partner_type: PartnerType) -> Partner:
         return Partner(code=code, name=name, partner_type=partner_type)
 
     def create_partner(self, partner: Partner) -> Partner:

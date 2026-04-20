@@ -16,7 +16,8 @@ logger = get_logger(__name__)
 class PartnerLedgerReport:
     """Generate simplified partner ledger view."""
 
-    def build(self, entries: list[JournalEntry]) -> PartnerLedgerView:
+    @staticmethod
+    def build(entries: list[JournalEntry]) -> PartnerLedgerView:
         """Build partner ledger from journal entries."""
         try:
             control_accounts = {"1100", "2000"}

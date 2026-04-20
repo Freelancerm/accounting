@@ -6,7 +6,6 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from src.domain.accounts import (
-    ACCOUNTS_PAYABLE,
     ACCOUNTS_RECEIVABLE,
     CASH,
     FIXED_CHART_OF_ACCOUNTS,

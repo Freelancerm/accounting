@@ -16,7 +16,8 @@ logger = get_logger(__name__)
 class ProfitAndLossReport:
     """Generate simplified Profit and Loss view."""
 
-    def build(self, entries: list[JournalEntry]) -> ProfitAndLossView:
+    @staticmethod
+    def build(entries: list[JournalEntry]) -> ProfitAndLossView:
         """Build report from journal entries."""
         try:
             revenue_total = sum(

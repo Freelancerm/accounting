@@ -35,7 +35,8 @@ class PostingService:
             raise InvalidPostingError(f"unsupported event type: {type(event).__name__}")
         return handler(event)
 
-    def post_sales_invoice(self, event: SalesInvoice) -> JournalEntry:
+    @staticmethod
+    def post_sales_invoice(event: SalesInvoice) -> JournalEntry:
         return JournalEntry(
             entry_id=str(uuid4()),
             entry_date=event.entry_date,
@@ -50,7 +51,8 @@ class PostingService:
             ),
         )
 
-    def post_expense_bill(self, event: ExpenseBill) -> JournalEntry:
+    @staticmethod
+    def post_expense_bill(event: ExpenseBill) -> JournalEntry:
         return JournalEntry(
             entry_id=str(uuid4()),
             entry_date=event.entry_date,
@@ -65,7 +67,8 @@ class PostingService:
             ),
         )
 
-    def post_cash_receipt(self, event: CashReceipt) -> JournalEntry:
+    @staticmethod
+    def post_cash_receipt(event: CashReceipt) -> JournalEntry:
         return JournalEntry(
             entry_id=str(uuid4()),
             entry_date=event.entry_date,
@@ -80,7 +83,8 @@ class PostingService:
             ),
         )
 
-    def post_vendor_payment(self, event: VendorPayment) -> JournalEntry:
+    @staticmethod
+    def post_vendor_payment(event: VendorPayment) -> JournalEntry:
         return JournalEntry(
             entry_id=str(uuid4()),
             entry_date=event.entry_date,
