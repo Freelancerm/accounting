@@ -1,264 +1,679 @@
-# Prompt History
+- **Prompts**
+    - **Step 1. Create project skeleton**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Create a production-minded initial project structure for a minimal accounting web app in Python using Streamlit.
+        
+        Context:
+        This assignment requires:
+        - Python
+        - Streamlit UI
+        - Dockerfile
+        - prompt_history.md
+        - simplified accounting flow
+        - simplified Profit and Loss report
+        - partner ledger
+        
+        Constraints:
+        - Do not use ready-made accounting libraries or accounting engines.
+        - Keep the architecture clean, small, and maintainable.
+        - Apply DRY and SOLID pragmatically.
+        - Add logging setup.
+        - Make the project Docker-ready.
+        - Use pinned dependencies.
+        - Keep code readable and reviewable.
+        - Create tests scaffold as well.
+        - Use current Streamlit documentation through Context7 when needed.
+        
+        Preferred structure:
+        - app.py
+        - src/
+          - core/
+          - domain/
+          - services/
+          - repositories/
+          - reporting/
+          - ui/
+        - tests/
+        - docs/
+        - prompt_history.md
+        - README.md
+        - Dockerfile
+        - requirements.txt
+        
+        Deliver:
+        1. Initial file/folder structure
+        2. requirements.txt with pinned packages
+        3. Dockerfile
+        4. .dockerignore
+        5. basic README with setup and run instructions
+        6. prompt_history.md template
+        7. logging configuration module
+        8. a minimal app entrypoint that runs
+        9. at least one smoke test
+        
+        Done when:
+        - project structure exists
+        - app starts
+        - tests run
+        - Dockerfile exists
+        - README exists
+        - prompt_history.md exists
+        ```
+        
+        Commit:
+        `feat: initialize project structure`
+        
+    - **Step 2. Define domain model and accounting rules**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Design and implement the core domain model and fixed accounting rules for the app.
+        
+        Context:
+        We need a minimal but coherent accounting flow.
+        Use fixed chart of accounts only:
+        - 1000 Cash
+        - 1100 Accounts Receivable
+        - 2000 Accounts Payable
+        - 4000 Revenue
+        - 5000 Expense
+        
+        Supported business events:
+        - Sales invoice
+        - Expense bill
+        - Cash receipt from customer
+        - Cash payment to vendor
+        
+        Constraints:
+        - Production-minded code
+        - DRY and SOLID
+        - No overengineering
+        - Explicit, readable naming
+        - Use dataclasses or typed models where appropriate
+        - Add structured logging in service boundaries
+        - Add tests for all finalized domain rules
+        - No database complexity yet unless needed
+        - No UI-heavy work yet
+        
+        Implement:
+        1. domain entities/value objects for:
+           - Partner
+           - PartnerType
+           - Account
+           - JournalEntry
+           - JournalLine
+           - SalesInvoice
+           - ExpenseBill
+           - CashReceipt
+           - VendorPayment
+        2. fixed chart of accounts definition
+        3. validation rules so journal entries must balance
+        4. posting rule definitions for the four business events
+        5. errors/exceptions for invalid posting or invalid domain input
+        6. unit tests for:
+           - balanced entry validation
+           - each posting scenario
+           - invalid input cases
+        
+        Done when:
+        - domain layer is clean and typed
+        - posting rules are explicit and understandable
+        - tests verify balanced postings and rule correctness
+        ```
+        
+        Commit:
+        `feat: implement core accounting domain and posting rules`
+        
+    - **Step 3. Build posting engine**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Implement the posting engine that converts business events into balanced journal entries.
+        
+        Context:
+        Business events:
+        - Sales invoice -> Dr AR / Cr Revenue
+        - Expense bill -> Dr Expense / Cr AP
+        - Cash receipt from customer -> Dr Cash / Cr AR
+        - Cash payment to vendor -> Dr AP / Cr Cash
+        
+        Constraints:
+        - Production-minded code
+        - Keep logic DRY and testable
+        - Separate domain rules from orchestration
+        - Use logging for service-level errors and key actions
+        - Avoid duplication in posting logic
+        - Add tests for all finalized posting workflows
+        
+        Implement:
+        1. PostingService or equivalent
+        2. clear interface for posting supported event types
+        3. journal line generation with account code and amount
+        4. proper domain exceptions and error logging
+        5. unit tests for:
+           - each event posted into expected journal lines
+           - unsupported event types
+           - zero or negative amount rejection if not allowed
+           - balanced output validation
+        
+        Also:
+        - make code easy to extend without rewriting everything
+        - briefly document the design in docs/decisions.md
+        
+        Done when:
+        - posting engine is isolated and testable
+        - all required events produce correct journal entries
+        - tests pass
+        ```
+        
+        Commit:
+        `feat: add posting engine for business events`
+        
+    - **Step 4. Add persistence layer**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Add a simple production-minded persistence layer for storing partners, business documents, and journal entries.
+        
+        Context:
+        This app is still intentionally small.
+        Use a simple persistence choice that is easy to run and review.
+        Prefer SQLite for this assignment unless there is a compelling reason not to.
+        
+        Constraints:
+        - Keep repository abstractions clean
+        - Avoid premature complexity
+        - Use DRY and SOLID pragmatically
+        - Keep persistence logic separate from domain logic
+        - Add logging for repository errors
+        - Add tests for repository behavior
+        - Docker compatibility must remain simple
+        - No heavy ORM magic if it harms clarity
+        
+        Implement:
+        1. persistence strategy and folder structure
+        2. repositories for:
+           - partners
+           - business events/documents
+           - journal entries
+        3. simple database initialization/bootstrap
+        4. seed or bootstrap fixed chart of accounts if needed
+        5. repository tests
+        6. test fixtures/helpers to keep tests readable
+        
+        Important:
+        - keep the storage schema simple and explicit
+        - ensure code remains easy to review
+        - do not bury business logic inside persistence layer
+        
+        Done when:
+        - data can be created and retrieved
+        - repository interfaces are clean
+        - tests cover core repository behavior
+        ```
+        
+        Commit:
+        `feat: add persistence layer with repository abstractions`
+        
+    - **Step 5. Add application services**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Implement application services that orchestrate the user flows.
+        
+        Context:
+        We need clean service-layer orchestration for:
+        - create customer/vendor partner
+        - create sales invoice and post it
+        - create expense bill and post it
+        - register customer cash receipt and post it
+        - register vendor payment and post it
+        
+        Constraints:
+        - Production-minded code
+        - DRY and SOLID
+        - Clear separation between UI, service layer, domain, and persistence
+        - Use logging for failures and important service operations
+        - Return meaningful results/errors
+        - Add tests after finishing the service layer
+        
+        Implement:
+        1. PartnerService
+        2. SalesService
+        3. PurchaseService
+        4. CashService or similarly clean structure
+        5. transaction-like handling so business event and journal posting stay consistent
+        6. tests for service workflows
+        7. error paths and validation paths
+        
+        Also:
+        - keep services thin but useful
+        - prefer explicit commands/DTOs if that improves clarity
+        - avoid stuffing everything into one god-service
+        
+        Done when:
+        - main business flows work end to end through service layer
+        - tests verify service behavior
+        - logging is in place
+        ```
+        
+        Commit:
+        `feat: implement application services for core accounting flows`
+        
+    - **Step 6. Build reporting layer**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Implement the reporting layer for simplified Profit and Loss and partner ledger.
+        
+        Context:
+        Assignment requires:
+        - simplified Profit and Loss
+        - small partner ledger
+        Reports must be understandable and consistent with the posting model.
+        
+        Constraints:
+        - Production-minded code
+        - Reporting logic must be separate from UI
+        - Keep calculations simple, explicit, and correct
+        - Add logging for report generation errors
+        - Add tests for every finalized report
+        - Avoid overcomplicated SQL unless clearly justified
+        
+        Implement:
+        1. ProfitAndLossReport service
+        2. PartnerLedgerReport service
+        3. supporting query/repository methods
+        4. report DTOs/view models appropriate for UI rendering
+        5. tests for:
+           - revenue and expense aggregation into P&L
+           - partner ledger movements and balances
+           - customer and vendor scenarios
+           - empty-state reporting
+        
+        Clarify behavior:
+        - P&L should reflect revenue and expense movement simply
+        - partner ledger should show movements and current balance per partner
+        
+        Done when:
+        - reports are generated independently of Streamlit
+        - tests confirm correctness
+        ```
+        
+        Commit:
+        `feat: implement profit and loss and partner ledger reporting`
+        
+    - **Step 7. Build Streamlit UI shell**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Create a clean and simple Streamlit UI shell for the accounting app.
+        
+        Context:
+        Use current official Streamlit docs through Context7 before using non-trivial Streamlit APIs.
+        We need a small, usable UI for review, not a flashy dashboard.
+        
+        Constraints:
+        - Production-minded code
+        - Keep UI thin and delegate logic to services
+        - Use clear layout and navigation
+        - Prefer Streamlit primitives like forms, tabs, tables, and metrics
+        - Avoid business logic inside UI callbacks
+        - Add smoke tests or any reasonable UI-level tests possible for this architecture
+        - Keep logging for error handling
+        - Docker run path must still work
+        
+        Implement:
+        1. app entrypoint with page config
+        2. navigation structure
+        3. pages/sections for:
+           - partners
+           - transactions
+           - reports
+        4. common UI helpers
+        5. graceful error rendering for failed operations
+        6. success/error notifications
+        7. basic empty states
+        
+        Done when:
+        - app navigation is usable
+        - UI is clean and thin
+        - service layer is called from UI cleanly
+        ```
+        
+        Commit:
+        `feat: add Streamlit application shell and navigation`
+        
+    - **Step 8. Build partner management UI**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Implement the Streamlit UI for managing partners.
+        
+        Context:
+        Partners are simplified and should support at least:
+        - name
+        - type: customer or vendor
+        
+        Constraints:
+        - Production-minded code
+        - Keep UI logic thin
+        - Use forms and tables cleanly
+        - Validate user input
+        - Show meaningful errors
+        - Add tests after this step if applicable to current architecture
+        - Logging should capture service failures, not spam normal flow
+        
+        Implement:
+        1. create partner form
+        2. partner list/table
+        3. simple filtering by type if useful
+        4. empty states and validation feedback
+        5. tests for partner service/UI-adjacent behavior where appropriate
+        
+        Done when:
+        - user can create and list customer/vendor partners from the UI
+        - behavior is clean and stable
+        ```
+        
+        Commit:
+        `feat: add partner management interface`
+        
+    - **Step 9. Build business transaction UI**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Implement the Streamlit UI for creating business transactions that trigger accounting postings.
+        
+        Context:
+        Required flows:
+        - sales invoice
+        - expense bill
+        - customer cash receipt
+        - vendor payment
+        
+        Constraints:
+        - Production-minded code
+        - Keep UI forms clear and small
+        - Reuse form/helper components where appropriate
+        - Do not duplicate service-calling logic unnecessarily
+        - Validate required fields and amounts
+        - Handle errors gracefully
+        - Add tests after finalizing the step
+        - Keep logging in service layer and critical UI boundary points
+        
+        Implement:
+        1. transaction forms for all four business events
+        2. partner selection where relevant
+        3. amount/date/reference fields as needed
+        4. success feedback after posting
+        5. optional transaction list/history view if it stays small and useful
+        6. tests for transaction workflows through service layer and any integration-level paths you can cover reasonably
+        
+        Done when:
+        - user can create all required business events from UI
+        - postings are generated and stored
+        - errors are handled cleanly
+        ```
+        
+        Commit:
+        `feat: add transaction flows for invoices receipts bills and payments`
+        
+    - **Step 10. Build reports UI**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Implement the Streamlit UI for Profit and Loss and partner ledger reports.
+        
+        Context:
+        Reports already exist in reporting layer.
+        Now expose them clearly in the UI.
+        
+        Constraints:
+        - Production-minded code
+        - Keep report rendering simple and readable
+        - Use metrics, tables, or grouped views only where useful
+        - Keep calculations in reporting layer, not UI
+        - Add tests after finalizing
+        - Logging should handle report-generation failures
+        
+        Implement:
+        1. Profit and Loss page/section
+        2. Partner ledger page/section
+        3. partner filter for ledger
+        4. empty states
+        5. report refresh controls only if needed
+        6. tests for integration paths around reporting if reasonable
+        
+        Done when:
+        - reports are visible and understandable in UI
+        - UI is thin
+        - reporting logic remains outside UI
+        ```
+        
+        Commit:
+        `feat: add reporting interface for pnl and partner ledger`
+        
+    - **Step 11. Add integration tests and hardening**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Harden the app and add broader automated test coverage.
+        
+        Context:
+        Core flows now exist.
+        We need stronger confidence and production-minded cleanup.
+        
+        Constraints:
+        - Production-minded code
+        - Improve quality without bloating scope
+        - Keep tests readable and maintainable
+        - Add logging improvements where useful
+        - Avoid unnecessary abstractions
+        - Docker setup must remain simple and working
+        
+        Implement:
+        1. integration tests for end-to-end business flows through services
+        2. test data helpers/fixtures cleanup
+        3. validation hardening
+        4. improve exception handling and logs
+        5. remove dead code and duplication
+        6. small refactors that improve readability and SOLID compliance without changing behavior
+        
+        Important:
+        - do not add random features
+        - focus on reliability and clarity
+        
+        Done when:
+        - major flows are covered by tests
+        - codebase is cleaner
+        - logging and error handling are improved
+        ```
+        
+        Commit:
+        `test: add integration coverage and harden core workflows`
+        
+    - **Step 12. Finalize Docker and runtime behavior**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Finalize Docker support and ensure the app is easy to run and review.
+        
+        Context:
+        Dockerfile already exists but now finalize the runtime path for the completed app.
+        
+        Constraints:
+        - Production-minded setup
+        - Keep Docker simple and reliable
+        - Do not overengineer containerization
+        - Ensure Streamlit app runs correctly in container
+        - Add any minimal health/readiness notes if useful
+        - Verify local and Docker instructions match reality
+        
+        Implement:
+        1. review and improve Dockerfile
+        2. improve .dockerignore if needed
+        3. ensure correct Streamlit startup command
+        4. ensure required files are copied correctly
+        5. document Docker build/run in README
+        6. add a lightweight smoke verification if reasonable
+        
+        Done when:
+        - app builds and runs in Docker
+        - README includes exact Docker commands
+        - setup is reviewer-friendly
+        ```
+        
+        Commit:
+        `chore: finalize docker runtime and deployment instructions`
+        
+    - **Step 13. Final documentation and submission readiness**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Prepare the repository for final submission.
+        
+        Context:
+        The assignment requires:
+        - public GitHub repository
+        - working Python + Streamlit solution
+        - Dockerfile
+        - setup/run instructions
+        - prompt history
+        - short explanation of product and technical decisions
+        
+        Constraints:
+        - Keep docs concise but sufficient
+        - Make repo easy for reviewer to understand quickly
+        - Do not invent features not in the code
+        - Ensure documentation matches actual implementation
+        
+        Implement:
+        1. finalize README.md
+        2. finalize docs/decisions.md with concise product and technical decisions
+        3. review prompt_history.md and ensure it is populated clearly
+        4. add sample usage section
+        5. add architecture overview section
+        6. add limitations/non-goals section aligned with assignment simplifications
+        7. add testing instructions
+        8. verify naming consistency across repository
+        
+        Done when:
+        - repository is submission-ready
+        - docs are coherent and accurate
+        - all acceptance-condition files are present
+        ```
+        
+        Commit:
+        `docs: finalize submission documentation and project decisions`
+        
+    - **Step 14. Final review and cleanup pass**
+        
+        ```markdown
+        Read AGENTS.md first and follow it strictly.
+        
+        Goal:
+        Perform a final production-minded review of the whole repository and apply safe cleanup improvements.
+        
+        Context:
+        The app should remain intentionally small but clean, coherent, and reviewable.
+        
+        Constraints:
+        - No major feature additions
+        - Focus on readability, maintainability, and consistency
+        - Preserve current behavior unless fixing clear defects
+        - Keep DRY and SOLID pragmatic
+        - Ensure logging is useful and not noisy
+        - Ensure tests still pass
+        - Keep Docker working
+        
+        Review for:
+        1. duplicated logic
+        2. oversized files/functions
+        3. naming clarity
+        4. exception handling consistency
+        5. logging quality
+        6. test quality
+        7. README accuracy
+        8. prompt_history completeness
+        
+        Apply:
+        - safe refactors
+        - cleanup of small inconsistencies
+        - improved comments/docstrings only where useful
+        
+        Done when:
+        - codebase is cleaner
+        - behavior is unchanged except for clear bug fixes
+        - tests remain green
+        ```
+        
+        Commit:
+        `refactor: polish codebase for readability consistency and maintainability`
+        
+    - **Step 15. Polish User experience**
+        
+        ```markdown
+        When we create transactions. Fields 
+        Partner Code
+        Reference
+        must generating automatically. User don't must to type it
+        Remove field existing partner 
+        When user typing Pertner name, under the hood service must complete search in existing clients and suggest to choose it in dropdown menu
+        
+        ```
+      Commit:
+        `feat: perform best UI exp for user`
+        
+    - **Step 16. Provide Demo data button**
+        
+        ```markdown
+        Our project must start empty, without demo (seed) data.
+        
+        On our website must be a button “Seed Demo Data” 
+        
+        when user click it, show loading progress and seed our database with demo data
+        ```
+        Commit:
+        `feat: added Seed Demo Data button`
+- **Fixing after AI:**
+    
+    Added static methods, fixing warnings in PyCharm
+Commit:
+        `fix: fixing type hinting, added staticmethods`
+    
+    Added foreign keys using in src/repositories/database.py:
+    
+    `connection.execute("PRAGMA foreign_keys = ON")`
+Commit:
+        `fix: fixed foreign keys in db connect`
+    
 
-## 2026-04-18T20:00:00Z
-
-- Goal: initialize production-minded minimal accounting web app in Python with Streamlit
-- Prompt summary: create clean project structure with Docker, pinned dependencies, logging, prompt history, simplified accounting flow, Profit and Loss, partner ledger, and tests
-- Result accepted:
-  - created layered `src/` structure plus `app.py`, `README.md`, `Dockerfile`, `.dockerignore`, `requirements.txt`, `tests/`, `docs/`
-  - implemented SQLite-backed minimal accounting flow with four business events and fixed chart of accounts
-  - added reporting for simplified Profit and Loss and partner ledger
-  - added logging setup and pytest coverage
-- Validation:
-  - `python3 -m compileall app.py src tests`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - replaced initial generic in-memory ledger scaffold with assignment-specific double-entry and SQLite structure after reading `AGENTS.md`
-
-## 2026-04-18T20:40:00Z
-
-- Goal: design and implement clean core domain model and fixed accounting rules
-- Prompt summary: add typed domain entities for partners, accounts, journal, four business events, explicit posting rules, domain exceptions, structured service-boundary logging, and tests for balanced postings and invalid cases
-- Result accepted:
-  - split domain into focused modules: `accounts`, `events`, `journal`, `posting_rules`, `errors`
-  - added explicit entities: `Partner`, `Account`, `JournalEntry`, `JournalLine`, `SalesInvoice`, `ExpenseBill`, `CashReceipt`, `VendorPayment`
-  - added fixed chart of accounts and explicit posting rules for all four business events
-  - updated service layer to build domain events, call posting rules, and log at service boundary
-  - expanded tests to verify balancing, all four posting scenarios, invalid input, and service boundary behavior
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - kept existing SQLite repository compatible with new domain model instead of adding new persistence abstraction for this step
-
-## 2026-04-18T20:50:00Z
-
-- Goal: isolate posting engine that converts business events into balanced journal entries
-- Prompt summary: implement posting service with clean interface, journal line generation, unsupported-event handling, service-level logging, workflow tests, and brief design note
-- Result accepted:
-  - refactored posting engine into `PostingService`
-  - added single `post(event)` interface with explicit handlers for supported event types
-  - kept per-event posting methods for readability and extension
-  - made unsupported event types fail with explicit domain exception
-  - updated service orchestration to call posting engine directly
-  - added posting-engine tests for supported events and unsupported-event rejection
-  - documented posting-engine choice in `docs/decisions.md`
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - preserved compatibility alias `PostingRules = PostingService` to avoid unnecessary breakage while refactoring
-
-## 2026-04-18T21:00:00Z
-
-- Goal: add simple production-minded persistence layer for partners, business documents, and journal entries
-- Prompt summary: use SQLite, keep repository abstractions clean, add explicit bootstrap/schema, seed fixed accounts, add repository logging and tests
-- Result accepted:
-  - split persistence into `SQLiteDatabase`, `PartnerRepository`, `BusinessDocumentRepository`, `JournalEntryRepository`
-  - kept `SQLiteRepository` as thin compatibility facade for existing app/service flow
-  - added explicit schema for accounts, partners, business documents, journal entries, posting lines
-  - seeded fixed chart of accounts during bootstrap
-  - service now persists business documents alongside journal entries
-  - added repository tests and shared fixtures
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add heavy ORM or migration tool; kept raw sqlite3 for clarity and low setup cost
-
-## 2026-04-18T21:15:00Z
-
-- Goal: implement application services that orchestrate main user flows
-- Prompt summary: split service layer into partner, sales, purchase, and cash services; add transaction-like consistency, logging, and service workflow tests
-- Result accepted:
-  - added explicit service commands/DTOs and `ServiceResult`
-  - split orchestration into `PartnerService`, `SalesService`, `PurchaseService`, `CashService`
-  - added shared `ServiceWorkflow` for transactional save of partner + business document + journal entry
-  - updated repositories to support shared connection use inside one transaction
-  - kept `AccountingService` as thin compatibility facade for current UI
-  - added service workflow tests for success, validation failure, rollback, and logging
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not wire UI directly to new services yet; preserved current facade to keep change small and reviewable
-
-## 2026-04-18T21:30:00Z
-
-- Goal: implement reporting layer for simplified Profit and Loss and partner ledger
-- Prompt summary: add report services, report DTOs/view models, supporting repository query methods, report tests, and keep logic separate from Streamlit
-- Result accepted:
-  - added `ProfitAndLossReport` and `PartnerLedgerReport`
-  - added reporting DTOs in `src/reporting/models.py`
-  - added flattened journal-entry query helper for report use
-  - kept small DataFrame adapter functions for current Streamlit rendering compatibility
-  - added tests for revenue/expense aggregation, customer and vendor ledger balances, and empty-state reporting
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - avoided pushing complex SQL into repositories; report computations remain explicit in Python for reviewability
-
-## 2026-04-18T21:40:00Z
-
-- Goal: create clean and simple Streamlit UI shell for accounting app
-- Prompt summary: use official Streamlit docs for non-trivial APIs, add app shell with navigation for partners, transactions, and reports, keep UI thin, add helpers, notifications, empty states, and smoke coverage
-- Result accepted:
-  - added `src/ui/helpers.py` for notifications, tables, empty states, and error rendering
-  - added `src/ui/app_state.py` for UI service wiring
-  - refactored `src/ui/app_view.py` into sidebar navigation with sections for transactions, partners, and reports
-  - kept forms thin and delegated writes to service layer
-  - used report services for summaries and report sections
-  - expanded UI smoke test to verify navigation labels
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add flashy dashboard elements; kept layout intentionally plain and reviewer-friendly
-
-## 2026-04-18T21:50:00Z
-
-- Goal: complete partner-management UI behavior
-- Prompt summary: implement create partner form, partner list, useful type filter, empty states, validation feedback, and keep UI thin
-- Result accepted:
-  - partner form remains service-driven through `PartnerService`
-  - added type filter for partner list
-  - refined empty-state message to reflect active filter
-  - kept validation and failure handling in service/UI helper boundary
-- Validation:
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add full partner edit/delete workflow; kept scope aligned with assignment
-
-## 2026-04-18T22:00:00Z
-
-- Goal: complete transaction-entry UI behavior
-- Prompt summary: implement transaction forms for four business events, support partner selection, validate required fields, keep service-calling logic thin, and add reasonable smoke coverage
-- Result accepted:
-  - transaction form continues to support all four required business events
-  - added optional existing-partner selection filtered by event type
-  - kept manual partner entry fallback for early-use and small-scope review flow
-  - added thin UI validation for required partner fields before service calls when using manual mode
-  - extended smoke test to verify transaction form controls remain present
-- Validation:
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add separate per-event pages; kept one small shared transaction form to avoid duplicated UI logic
-
-## 2026-04-18T22:10:00Z
-
-- Goal: complete reporting UI behavior
-- Prompt summary: expose Profit and Loss and partner ledger clearly in Streamlit, keep UI thin, add ledger partner filter, and preserve reporting logic outside UI
-- Result accepted:
-  - added P&L metrics in reporting section for quick readability
-  - added partner filter for ledger movements and balances
-  - refined report empty states to reflect current filter
-  - kept calculations entirely in reporting layer
-- Validation:
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add explicit refresh controls; Streamlit rerender from normal interaction already sufficient for this small app
-
-## 2026-04-18T22:20:00Z
-
-- Goal: harden app and broaden automated test coverage
-- Prompt summary: improve reliability, clean fixtures, add broader integration tests, tighten validation/error handling, and remove small sources of duplication without changing scope
-- Result accepted:
-  - added end-to-end integration tests across partner creation, four business flows, persistence, and reporting
-  - added failure-path integration test to verify no partial persistence on invalid flow
-  - cleaned test fixtures with reusable partner builder helper
-  - improved workflow exception logging context
-  - changed UI error helper to log concise warning context instead of noisy stack traces for expected user-facing failures
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add new feature surface or heavy abstractions; kept hardening focused on reliability and clarity
-
-## 2026-04-18T22:35:00Z
-
-- Goal: finalize Docker support and reviewer-friendly runtime path
-- Prompt summary: review Dockerfile and Docker docs, ensure Streamlit startup command is correct, improve ignore rules, and add lightweight smoke verification
-- Result accepted:
-  - refined Docker image runtime env and kept direct `streamlit run app.py` startup on `0.0.0.0:8501`
-  - added lightweight container healthcheck against Streamlit port
-  - tightened `.dockerignore` for local caches, build artifacts, logs, and local data
-  - updated README Docker and compose notes to match verified runtime behavior
-  - verified image build and container startup successfully through local Docker smoke run
-- Validation:
-  - `docker build -t minimal-accounting:local .`
-  - `docker run --rm -d -p 8501:8501 --name minimal-accounting-smoke minimal-accounting:local`
-  - `docker logs minimal-accounting-smoke`
-  - `docker stop minimal-accounting-smoke`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add orchestration complexity or separate health endpoint; lightweight port check sufficient for assignment scope
-
-## 2026-04-18T22:50:00Z
-
-- Goal: finalize repository docs for submission
-- Prompt summary: tighten README, decisions, and prompt history; add sample usage, architecture overview, testing instructions, and verify naming consistency across repository
-- Result accepted:
-  - expanded README with reviewer flow, architecture overview, sample usage, product/technical decisions, and clearer testing guidance
-  - tightened `docs/decisions.md` into concise product, technical, simplification, and tradeoff notes aligned with actual implementation
-  - reviewed naming consistency across docs and implementation for key terms such as Profit and Loss, partner ledger, Docker commands, and compatibility facades
-  - kept prompt history populated and appended final submission-preparation step
-- Validation:
-  - manual review of `README.md`, `docs/decisions.md`, `prompt_history.md`, `docs/architecture.md`, and repository file list
-- Rejected / changed:
-  - did not add features or promise workflows that are not present in the code
-
-## 2026-04-18T23:05:00Z
-
-- Goal: perform final production-minded cleanup review
-- Prompt summary: review duplication, oversized files, naming, exception/logging consistency, tests, and docs; apply only safe cleanup improvements without changing scope
-- Result accepted:
-  - reduced duplicate warning logs by narrowing service-level exception handling to event construction only
-  - added explicit return types to service methods for readability
-  - cleaned `src/ui/app_view.py` with shared helpers for currency formatting, partner filtering, and event-to-partner-type mapping
-  - removed repeated partner repository reads inside transaction form flow
-  - rechecked README accuracy and prompt history completeness during final sweep
-- Validation:
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not rewrite large architecture pieces or change UI behavior; cleanup stayed small and behavior-preserving
-
-## 2026-04-20T00:10:00Z
-
-- Goal: improve transaction entry UX with automatic defaults and partner suggestions
-- Prompt summary: remove manual transaction fields for partner code and reference, remove explicit existing-partner selector, auto-generate both values, and suggest existing partners while typing partner name
-- Result accepted:
-  - added partner repository search and exact-name lookup support
-  - added generated reference support based on event type and existing business documents
-  - added service-layer partner identity resolution so blank partner code now reuses existing partner by exact name or creates next generated code
-  - updated transaction UI to use typed partner-name search plus suggestion dropdown
-  - removed manual transaction entry for partner code and reference and replaced them with disabled auto-generated previews
-  - expanded tests for generated codes/references, partner suggestions, and updated UI smoke coverage
-- Validation:
-  - `python3 -m compileall src tests app.py`
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not add fuzzy partner matching on submit; exact-name reuse keeps behavior deterministic and reviewable
-
-## 2026-04-20T00:25:00Z
-
-- Goal: remove automatic demo data and make demo seeding explicit in UI
-- Prompt summary: start app with empty database, add `Seed Demo Data` button in website, show loading progress during seeding, and keep demo loading optional for reviewers
-- Result accepted:
-  - removed automatic demo-data bootstrap from app startup
-  - added explicit `seed_demo_data()` service method with optional progress callback and one-time behavior
-  - added top-level `Seed Demo Data` button with spinner, progress bar, and success/warning notifications
-  - updated tests to verify empty startup, one-time demo seeding, and seed button presence
-- Validation:
-  - `.venv/bin/pytest -q`
-- Rejected / changed:
-  - did not auto-clear existing data before seeding; current behavior avoids duplicate demo transactions in existing databases
-
-## Entry Template
-
-- Date/time:
-- Goal:
-- Prompt summary:
-- Result:
-- Accepted / changed / rejected:
-- Validation:
