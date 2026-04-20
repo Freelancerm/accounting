@@ -73,6 +73,7 @@ class SQLiteDatabase:
         try:
             connection.row_factory = sqlite3.Row
             yield connection
+            connection.execute("PRAGMA foreign_keys = ON")
             connection.commit()
         except Exception:
             connection.rollback()
