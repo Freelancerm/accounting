@@ -223,6 +223,23 @@
 - Rejected / changed:
   - did not rewrite large architecture pieces or change UI behavior; cleanup stayed small and behavior-preserving
 
+## 2026-04-20T00:10:00Z
+
+- Goal: improve transaction entry UX with automatic defaults and partner suggestions
+- Prompt summary: remove manual transaction fields for partner code and reference, remove explicit existing-partner selector, auto-generate both values, and suggest existing partners while typing partner name
+- Result accepted:
+  - added partner repository search and exact-name lookup support
+  - added generated reference support based on event type and existing business documents
+  - added service-layer partner identity resolution so blank partner code now reuses existing partner by exact name or creates next generated code
+  - updated transaction UI to use typed partner-name search plus suggestion dropdown
+  - removed manual transaction entry for partner code and reference and replaced them with disabled auto-generated previews
+  - expanded tests for generated codes/references, partner suggestions, and updated UI smoke coverage
+- Validation:
+  - `python3 -m compileall src tests app.py`
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not add fuzzy partner matching on submit; exact-name reuse keeps behavior deterministic and reviewable
+
 ## Entry Template
 
 - Date/time:

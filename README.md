@@ -22,6 +22,8 @@ This repository implements a deliberately small accounting web app. It lets a re
   - expense bill
   - cash receipt from customer
   - cash payment to vendor
+- transaction form auto-generates partner codes and document references
+- transaction entry suggests existing partners by typed name
 - double-entry journal postings
 - SQLite persistence
 - Streamlit UI

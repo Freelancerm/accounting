@@ -104,7 +104,7 @@ def test_invalid_flow_does_not_persist_partial_records(tmp_path) -> None:
             SalesInvoiceCommand(
                 entry_date=date(2026, 1, 1),
                 partner_code="",
-                partner_name="Acme Client",
+                partner_name="",
                 amount=Decimal("100.00"),
                 reference="INV-1001",
             )

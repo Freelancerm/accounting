@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from src.core.logging_config import get_logger
 from src.domain.errors import DomainError
-from src.domain.events import BusinessEvent, Partner, PartnerType
+from src.domain.events import BusinessEvent, BusinessEventType, Partner, PartnerType
 from src.domain.posting_rules import PostingService
 from src.repositories.sqlite import SQLiteRepository
 from src.services.commands import ServiceResult
 
 logger = get_logger(__name__)
+
+PARTNER_CODE_PREFIX_BY_TYPE = {
+    PartnerType.CUSTOMER: "CUST",
+    PartnerType.VENDOR: "VEND",
+}
 
 
 class ServiceWorkflow:
@@ -22,6 +27,25 @@ class ServiceWorkflow:
     @staticmethod
     def build_partner(code: str, name: str, partner_type: PartnerType) -> Partner:
         return Partner(code=code, name=name, partner_type=partner_type)
+
+    def resolve_partner(self, code: str, name: str, partner_type: PartnerType) -> Partner:
+        normalized_code = code.strip().upper()
+        normalized_name = name.strip()
+
+        if normalized_code:
+            return self.build_partner(normalized_code, normalized_name, partner_type)
+
+        existing_partner = self._repository.find_partner_by_name(normalized_name, partner_type)
+        if existing_partner is not None:
+            return existing_partner
+
+        return self.build_partner(self._next_partner_code(partner_type), normalized_name, partner_type)
+
+    def resolve_reference(self, event_type: BusinessEventType, reference: str) -> str:
+        normalized_reference = reference.strip().upper()
+        if normalized_reference:
+            return normalized_reference
+        return self._repository.next_reference(event_type)
 
     def create_partner(self, partner: Partner) -> Partner:
         try:
@@ -71,3 +95,15 @@ class ServiceWorkflow:
                 },
             )
             raise
+
+    def _next_partner_code(self, partner_type: PartnerType) -> str:
+        prefix = PARTNER_CODE_PREFIX_BY_TYPE[partner_type]
+        next_number = 1
+        for partner in self._repository.list_partners():
+            if partner.partner_type is not partner_type or not partner.code.startswith(f"{prefix}-"):
+                continue
+            try:
+                next_number = max(next_number, int(partner.code.split("-", maxsplit=1)[1]) + 1)
+            except (IndexError, ValueError):
+                continue
+        return f"{prefix}-{next_number:03d}"

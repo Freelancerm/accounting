@@ -85,6 +85,7 @@ class SQLiteDatabase:
         """Create schema and seed fixed accounts."""
         with self.connect() as connection:
             connection.executescript(SCHEMA_SQL)
+            self._migrate_legacy_journal_entries_table(connection)
             connection.executemany(
                 """
                 INSERT INTO accounts (code, name)
@@ -93,3 +94,40 @@ class SQLiteDatabase:
                 """,
                 [(account.code, account.name) for account in FIXED_CHART_OF_ACCOUNTS],
             )
+
+    @staticmethod
+    def _migrate_legacy_journal_entries_table(connection: sqlite3.Connection) -> None:
+        """Rebuild stale journal_entries schema from older assignment iterations."""
+        columns = {
+            row["name"]: row
+            for row in connection.execute("PRAGMA table_info(journal_entries)").fetchall()
+        }
+        if "amount" not in columns:
+            return
+
+        logger.warning("Migrating legacy journal_entries schema")
+        connection.executescript(
+            """
+            ALTER TABLE journal_entries RENAME TO journal_entries_legacy;
+
+            CREATE TABLE journal_entries (
+                entry_id TEXT PRIMARY KEY,
+                entry_date TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                partner_code TEXT NOT NULL,
+                partner_name TEXT NOT NULL,
+                reference TEXT NOT NULL,
+                description TEXT NOT NULL,
+                FOREIGN KEY(partner_code) REFERENCES partners(code)
+            );
+
+            INSERT INTO journal_entries (
+                entry_id, entry_date, event_type, partner_code, partner_name, reference, description
+            )
+            SELECT
+                entry_id, entry_date, event_type, partner_code, partner_name, reference, description
+            FROM journal_entries_legacy;
+
+            DROP TABLE journal_entries_legacy;
+            """
+        )

@@ -29,3 +29,9 @@ class PartnerService:
 
     def list_partners(self) -> list[Partner]:
         return self._repository.list_partners()
+
+    def suggest_partners(self, name_query: str, partner_type: PartnerType, *, limit: int = 5) -> list[Partner]:
+        return self._repository.search_partners(name_query, partner_type, limit=limit)
+
+    def resolve_partner_identity(self, code: str, name: str, partner_type: PartnerType) -> Partner:
+        return self._workflow.resolve_partner(code, name, partner_type)

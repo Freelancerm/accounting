@@ -221,45 +221,51 @@ def _render_reports_section(entries) -> None:
 
 def _render_transaction_form(services: AppServices) -> None:
     st.subheader("Create Transaction")
+    event_type = st.selectbox(
+        "Business Event",
+        options=[event.value for event in BusinessEventType],
+        format_func=lambda value: value.replace("_", " ").title(),
+        key="transaction_event_type",
+    )
+    selected_event_type = BusinessEventType(event_type)
+    partner_name = st.text_input("Partner Name", placeholder="Acme Client", key="transaction_partner_name")
+    partner_type = _partner_type_for_event(selected_event_type)
+    suggested_partners = services.accounting.suggest_partners(partner_name, partner_type)
+    suggestion_options = ["new_partner", *[f"{partner.code} | {partner.name}" for partner in suggested_partners]]
+    partner_selection = st.selectbox(
+        "Suggested Partner",
+        options=suggestion_options,
+        format_func=lambda value: _format_partner_option(value),
+        key="transaction_partner_suggestion",
+    )
+    resolved_partner = _resolve_partner_selection(suggested_partners, partner_selection)
+    preview_partner_name = resolved_partner.name if resolved_partner is not None else partner_name
+    generated_partner_code = (
+        resolved_partner.code
+        if resolved_partner is not None
+        else services.accounting.preview_partner_code(preview_partner_name, partner_type)
+    )
+    generated_reference = services.accounting.preview_reference(selected_event_type)
+
     with st.form("transaction_form"):
         entry_date = st.date_input("Date", value=date.today())
-        event_type = st.selectbox(
-            "Business Event",
-            options=[event.value for event in BusinessEventType],
-            format_func=lambda value: value.replace("_", " ").title(),
-        )
-        selected_event_type = BusinessEventType(event_type)
-        partners = _list_partners(services)
-        available_partners = _partner_options_for_event(partners, selected_event_type)
-        partner_selection = st.selectbox(
-            "Existing Partner (Optional)",
-            options=["manual", *available_partners],
-            format_func=lambda value: "Manual Entry" if value == "manual" else value,
-            key="transaction_partner_selection",
-        )
-        partner_code = st.text_input("Partner Code", placeholder="CUST-001 or VEND-001")
-        partner_name = st.text_input("Partner Name", placeholder="Acme Client")
+        st.text_input("Partner Code", value=generated_partner_code, disabled=True)
+        st.text_input("Reference", value=generated_reference, disabled=True)
         amount = st.number_input("Amount", min_value=0.0, value=0.0, step=100.0, format="%.2f")
-        reference = st.text_input("Reference", placeholder="INV-1001")
         description = st.text_input("Description", placeholder="Optional note")
         submitted = st.form_submit_button("Post Transaction")
 
         if submitted:
             try:
-                resolved_partner_code, resolved_partner_name = _resolve_partner_input(
-                    partners=partners,
-                    partner_selection=partner_selection,
-                    fallback_code=partner_code,
-                    fallback_name=partner_name,
-                )
+                resolved_partner_name = _resolve_partner_name(partner_name, resolved_partner)
                 _submit_transaction(
                     services=services,
                     event_type=selected_event_type,
                     entry_date=entry_date,
-                    partner_code=resolved_partner_code,
+                    partner_code=resolved_partner.code if resolved_partner is not None else "",
                     partner_name=resolved_partner_name,
                     amount=Decimal(f"{amount:.2f}"),
-                    reference=reference,
+                    reference="",
                     description=description,
                 )
                 queue_notification("success", "Balanced journal entry posted")
@@ -325,43 +331,20 @@ def _submit_transaction(
             description=description,
         )
     )
-
-
-def _partner_options_for_event(partners: list[Partner], event_type: BusinessEventType) -> list[str]:
-    expected_type = _partner_type_for_event(event_type)
-    return [
-        f"{partner.code} | {partner.name}"
-        for partner in partners
-        if partner.partner_type is expected_type
-    ]
-
-
-def _resolve_partner_input(
-    *,
-    partners: list[Partner],
-    partner_selection: str,
-    fallback_code: str,
-    fallback_name: str,
-) -> tuple[str, str]:
-    if partner_selection == "manual":
-        _validate_transaction_input(fallback_code, fallback_name)
-        return fallback_code, fallback_name
+def _resolve_partner_selection(partners: list[Partner], partner_selection: str) -> Partner | None:
+    if partner_selection == "new_partner":
+        return None
 
     partner_code = partner_selection.split(" | ", maxsplit=1)[0]
-    partner = next(
-        (partner for partner in partners if partner.code == partner_code),
-        None,
-    )
-    if partner is None:
-        raise ValueError("selected partner not found")
-    return partner.code, partner.name
+    return next((partner for partner in partners if partner.code == partner_code), None)
 
 
-def _validate_transaction_input(partner_code: str, partner_name: str) -> None:
-    if not partner_code.strip():
-        raise ValueError("partner code required")
+def _resolve_partner_name(partner_name: str, selected_partner: Partner | None) -> str:
+    if selected_partner is not None:
+        return selected_partner.name
     if not partner_name.strip():
         raise ValueError("partner name required")
+    return partner_name.strip()
 
 
 def _partner_type_for_event(event_type: BusinessEventType) -> PartnerType:
@@ -379,3 +362,9 @@ def _list_partners(services: AppServices, partner_type: PartnerType | None = Non
 
 def _format_currency(amount: Decimal) -> str:
     return f"${float(amount):,.2f}"
+
+
+def _format_partner_option(option: str) -> str:
+    if option == "new_partner":
+        return "Create new partner from typed name"
+    return option

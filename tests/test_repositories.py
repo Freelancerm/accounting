@@ -19,6 +19,47 @@ def test_database_bootstrap_seeds_fixed_accounts(tmp_path) -> None:
     ]
 
 
+def test_database_bootstrap_migrates_legacy_journal_entries_schema(tmp_path) -> None:
+    database_path = tmp_path / "accounting.db"
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.executescript(
+            """
+            CREATE TABLE journal_entries (
+                entry_id TEXT PRIMARY KEY,
+                entry_date TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                partner_code TEXT NOT NULL,
+                partner_name TEXT NOT NULL,
+                reference TEXT NOT NULL,
+                description TEXT NOT NULL,
+                amount TEXT NOT NULL
+            );
+
+            INSERT INTO journal_entries (
+                entry_id, entry_date, event_type, partner_code, partner_name, reference, description, amount
+            ) VALUES ('entry-1', '2026-01-01', 'sales_invoice', 'CUST-001', 'Acme', 'INV-1001', '', '100.00');
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    database = SQLiteDatabase(str(database_path))
+
+    with database.connect() as active_connection:
+        columns = [
+            row["name"]
+            for row in active_connection.execute("PRAGMA table_info(journal_entries)").fetchall()
+        ]
+        rows = active_connection.execute(
+            "SELECT entry_id, reference FROM journal_entries ORDER BY entry_id"
+        ).fetchall()
+
+    assert "amount" not in columns
+    assert [(row["entry_id"], row["reference"]) for row in rows] == [("entry-1", "INV-1001")]
+
+
 def test_partner_repository_round_trip(tmp_path) -> None:
     repository = PartnerRepository(SQLiteDatabase(str(tmp_path / "accounting.db")))
     repository.upsert(customer_partner())

@@ -51,6 +51,48 @@ def test_sales_service_records_document_and_journal(tmp_path) -> None:
     assert len(repository.list_journal_entries()) == 1
 
 
+def test_sales_service_generates_partner_code_and_reference_for_new_partner(tmp_path) -> None:
+    repository = SQLiteRepository(str(tmp_path / "accounting.db"))
+    result = SalesService(repository).create_sales_invoice(
+        SalesInvoiceCommand(
+            entry_date=date(2026, 1, 5),
+            partner_code="",
+            partner_name="New Client",
+            amount=Decimal("125.00"),
+            reference="",
+        )
+    )
+
+    assert result.partner.code == "CUST-001"
+    assert result.journal_entry.reference == "INV-1001"
+    assert repository.list_partners()[0].name == "New Client"
+
+
+def test_sales_service_reuses_existing_partner_when_name_matches(tmp_path) -> None:
+    repository = SQLiteRepository(str(tmp_path / "accounting.db"))
+    partner_service = PartnerService(repository)
+    partner_service.create_partner(
+        CreatePartnerCommand(
+            code="cust-001",
+            name="Acme Client",
+            partner_type=customer_partner().partner_type,
+        )
+    )
+
+    result = SalesService(repository).create_sales_invoice(
+        SalesInvoiceCommand(
+            entry_date=date(2026, 1, 5),
+            partner_code="",
+            partner_name="acme client",
+            amount=Decimal("125.00"),
+            reference="",
+        )
+    )
+
+    assert result.partner.code == "CUST-001"
+    assert len(repository.list_partners()) == 1
+
+
 def test_purchase_service_records_expense_bill(tmp_path) -> None:
     repository = SQLiteRepository(str(tmp_path / "accounting.db"))
     result = PurchaseService(repository).create_expense_bill(
@@ -114,6 +156,21 @@ def test_service_validation_error_bubbles_cleanly(tmp_path, caplog) -> None:
             )
 
     assert "Rejected sales command" in caplog.text
+
+
+def test_partner_service_returns_name_suggestions(tmp_path) -> None:
+    repository = SQLiteRepository(str(tmp_path / "accounting.db"))
+    service = PartnerService(repository)
+    service.create_partner(
+        CreatePartnerCommand(code="cust-001", name="Acme Client", partner_type=customer_partner().partner_type)
+    )
+    service.create_partner(
+        CreatePartnerCommand(code="cust-002", name="Acme Growth", partner_type=customer_partner().partner_type)
+    )
+
+    suggestions = service.suggest_partners("acme", customer_partner().partner_type)
+
+    assert [partner.code for partner in suggestions] == ["CUST-001", "CUST-002"]
 
 
 def test_transaction_rolls_back_when_journal_save_fails(tmp_path, monkeypatch) -> None:

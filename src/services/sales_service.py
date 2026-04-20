@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from src.core.logging_config import get_logger
 from src.domain.errors import DomainError
-from src.domain.events import PartnerType, SalesInvoice
+from src.domain.events import BusinessEventType, PartnerType, SalesInvoice
 from src.repositories.sqlite import SQLiteRepository
 from src.services.commands import SalesInvoiceCommand, ServiceResult
 from src.services.workflow_support import ServiceWorkflow
@@ -22,13 +22,13 @@ class SalesService:
         try:
             event = SalesInvoice(
                 entry_date=command.entry_date,
-                partner=self._workflow.build_partner(
+                partner=self._workflow.resolve_partner(
                     command.partner_code,
                     command.partner_name,
                     PartnerType.CUSTOMER,
                 ),
                 amount=command.amount,
-                reference=command.reference,
+                reference=self._workflow.resolve_reference(BusinessEventType.SALES_INVOICE, command.reference),
                 description=command.description,
             )
         except DomainError:

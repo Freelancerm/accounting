@@ -52,3 +52,78 @@ class PartnerRepository:
             Partner(code=row["code"], name=row["name"], partner_type=PartnerType(row["partner_type"]))
             for row in rows
         ]
+
+    def search_by_name(
+        self,
+        query: str,
+        partner_type: PartnerType,
+        *,
+        limit: int = 5,
+        connection: sqlite3.Connection | None = None,
+    ) -> list[Partner]:
+        """Return small case-insensitive partner suggestion list."""
+        normalized_query = query.strip()
+        if not normalized_query:
+            return []
+
+        try:
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                rows = active_connection.execute(
+                    """
+                    SELECT code, name, partner_type
+                    FROM partners
+                    WHERE partner_type = ?
+                      AND UPPER(name) LIKE UPPER(?)
+                    ORDER BY name, code
+                    LIMIT ?
+                    """,
+                    (partner_type.value, f"%{normalized_query}%", limit),
+                ).fetchall()
+        except Exception:
+            logger.exception(
+                "Partner repository search failed",
+                extra={"partner_type": partner_type.value, "query": normalized_query},
+            )
+            raise
+
+        return [
+            Partner(code=row["code"], name=row["name"], partner_type=PartnerType(row["partner_type"]))
+            for row in rows
+        ]
+
+    def find_by_exact_name(
+        self,
+        name: str,
+        partner_type: PartnerType,
+        connection: sqlite3.Connection | None = None,
+    ) -> Partner | None:
+        """Return exact case-insensitive partner name match when present."""
+        normalized_name = name.strip()
+        if not normalized_name:
+            return None
+
+        try:
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                row = active_connection.execute(
+                    """
+                    SELECT code, name, partner_type
+                    FROM partners
+                    WHERE partner_type = ?
+                      AND UPPER(name) = UPPER(?)
+                    ORDER BY code
+                    LIMIT 1
+                    """,
+                    (partner_type.value, normalized_name),
+                ).fetchone()
+        except Exception:
+            logger.exception(
+                "Partner repository exact-name lookup failed",
+                extra={"partner_type": partner_type.value, "name": normalized_name},
+            )
+            raise
+
+        if row is None:
+            return None
+        return Partner(code=row["code"], name=row["name"], partner_type=PartnerType(row["partner_type"]))

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from src.domain.events import Partner
+from src.domain.events import BusinessEventType, Partner, PartnerType
 from src.domain.journal import JournalEntry
 from src.repositories.sqlite import SQLiteRepository
 from src.services.cash_service import CashService
@@ -151,3 +151,17 @@ class AccountingService:
     def list_partners(self) -> list[Partner]:
         """Return all partners."""
         return self.partners.list_partners()
+
+    def suggest_partners(self, name_query: str, partner_type: PartnerType, *, limit: int = 5) -> list[Partner]:
+        """Return partner suggestions for transaction entry."""
+        return self.partners.suggest_partners(name_query, partner_type, limit=limit)
+
+    def preview_partner_code(self, partner_name: str, partner_type: PartnerType) -> str:
+        """Return existing or next generated partner code."""
+        if not partner_name.strip():
+            return ""
+        return self.partners.resolve_partner_identity("", partner_name, partner_type).code
+
+    def preview_reference(self, event_type: BusinessEventType) -> str:
+        """Return next generated document reference for event type."""
+        return self._repository.next_reference(event_type)

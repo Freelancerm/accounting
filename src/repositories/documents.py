@@ -30,6 +30,13 @@ EVENT_CLASS_BY_TYPE = {
     BusinessEventType.CASH_PAYMENT.value: VendorPayment,
 }
 
+REFERENCE_PREFIX_BY_EVENT = {
+    BusinessEventType.SALES_INVOICE: ("INV", 1000),
+    BusinessEventType.EXPENSE_BILL: ("BILL", 2000),
+    BusinessEventType.CASH_RECEIPT: ("RCPT", 3000),
+    BusinessEventType.CASH_PAYMENT: ("PAY", 4000),
+}
+
 
 class BusinessDocumentRepository:
     """Persist and load business documents."""
@@ -108,3 +115,37 @@ class BusinessDocumentRepository:
                 )
             )
         return documents
+
+    def next_reference(
+        self,
+        event_type: BusinessEventType,
+        connection: sqlite3.Connection | None = None,
+    ) -> str:
+        """Return next reviewer-friendly reference for event type."""
+        prefix, starting_number = REFERENCE_PREFIX_BY_EVENT[event_type]
+        try:
+            connection_manager = nullcontext(connection) if connection is not None else self._database.connect()
+            with connection_manager as active_connection:
+                rows = active_connection.execute(
+                    """
+                    SELECT reference
+                    FROM business_documents
+                    WHERE event_type = ?
+                    ORDER BY reference
+                    """,
+                    (event_type.value,),
+                ).fetchall()
+        except Exception:
+            logger.exception("Business document next-reference lookup failed", extra={"event_type": event_type.value})
+            raise
+
+        next_number = starting_number + 1
+        for row in rows:
+            reference = row["reference"]
+            if not reference.startswith(f"{prefix}-"):
+                continue
+            try:
+                next_number = max(next_number, int(reference.split("-", maxsplit=1)[1]) + 1)
+            except (IndexError, ValueError):
+                continue
+        return f"{prefix}-{next_number:04d}"
