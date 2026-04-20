@@ -240,6 +240,20 @@
 - Rejected / changed:
   - did not add fuzzy partner matching on submit; exact-name reuse keeps behavior deterministic and reviewable
 
+## 2026-04-20T00:25:00Z
+
+- Goal: remove automatic demo data and make demo seeding explicit in UI
+- Prompt summary: start app with empty database, add `Seed Demo Data` button in website, show loading progress during seeding, and keep demo loading optional for reviewers
+- Result accepted:
+  - removed automatic demo-data bootstrap from app startup
+  - added explicit `seed_demo_data()` service method with optional progress callback and one-time behavior
+  - added top-level `Seed Demo Data` button with spinner, progress bar, and success/warning notifications
+  - updated tests to verify empty startup, one-time demo seeding, and seed button presence
+- Validation:
+  - `.venv/bin/pytest -q`
+- Rejected / changed:
+  - did not auto-clear existing data before seeding; current behavior avoids duplicate demo transactions in existing databases
+
 ## Entry Template
 
 - Date/time:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Callable
 
 from src.domain.events import BusinessEventType, Partner, PartnerType
 from src.domain.journal import JournalEntry
@@ -30,35 +31,44 @@ class AccountingService:
         self.purchases = PurchaseService(repository)
         self.cash = CashService(repository)
 
-    def bootstrap_sample_data(self) -> None:
-        """Seed minimal demo data once."""
+    def seed_demo_data(self, on_progress: Callable[[int, int], None] | None = None) -> int:
+        """Seed minimal demo data once and report inserted step progress."""
         if self._repository.list_journal_entries():
-            return
+            return 0
 
-        self.record_sales_invoice(
-            entry_date=date(2026, 1, 5),
-            partner_code="CUST-001",
-            partner_name="Acme Client",
-            amount=Decimal("12500.00"),
-            reference="INV-1001",
-            description="January consulting invoice",
+        demo_steps = (
+            lambda: self.record_sales_invoice(
+                entry_date=date(2026, 1, 5),
+                partner_code="CUST-001",
+                partner_name="Acme Client",
+                amount=Decimal("12500.00"),
+                reference="INV-1001",
+                description="January consulting invoice",
+            ),
+            lambda: self.record_expense_bill(
+                entry_date=date(2026, 1, 7),
+                partner_code="VEND-001",
+                partner_name="Cloud Vendor",
+                amount=Decimal("950.00"),
+                reference="BILL-2001",
+                description="Hosting bill",
+            ),
+            lambda: self.record_cash_receipt(
+                entry_date=date(2026, 1, 10),
+                partner_code="CUST-001",
+                partner_name="Acme Client",
+                amount=Decimal("8000.00"),
+                reference="RCPT-3001",
+                description="Partial customer receipt",
+            ),
         )
-        self.record_expense_bill(
-            entry_date=date(2026, 1, 7),
-            partner_code="VEND-001",
-            partner_name="Cloud Vendor",
-            amount=Decimal("950.00"),
-            reference="BILL-2001",
-            description="Hosting bill",
-        )
-        self.record_cash_receipt(
-            entry_date=date(2026, 1, 10),
-            partner_code="CUST-001",
-            partner_name="Acme Client",
-            amount=Decimal("8000.00"),
-            reference="RCPT-3001",
-            description="Partial customer receipt",
-        )
+
+        total_steps = len(demo_steps)
+        for index, step in enumerate(demo_steps, start=1):
+            step()
+            if on_progress is not None:
+                on_progress(index, total_steps)
+        return total_steps
 
     def record_sales_invoice(
         self,

@@ -182,6 +182,19 @@ def test_accounting_service_logs_and_persists_sales_invoice(tmp_path, caplog) ->
     assert len(service.list_entries()) == 1
 
 
+def test_accounting_service_starts_empty_and_seeds_demo_data_once(tmp_path) -> None:
+    service = AccountingService(SQLiteRepository(str(tmp_path / "accounting.db")))
+
+    assert service.list_entries() == []
+
+    inserted = service.seed_demo_data()
+    inserted_again = service.seed_demo_data()
+
+    assert inserted == 3
+    assert inserted_again == 0
+    assert len(service.list_entries()) == 3
+
+
 def test_app_smoke_renders_title() -> None:
     app = AppTest.from_file("app.py")
     app.run()
@@ -189,6 +202,7 @@ def test_app_smoke_renders_title() -> None:
     assert app.title[0].value == "Minimal Accounting"
     assert app.radio[0].label == "Navigation"
     assert app.radio[0].options == ["Transactions", "Partners", "Reports"]
+    assert app.button[0].label == "Seed Demo Data"
     assert app.selectbox[0].label == "Business Event"
     assert app.selectbox[1].label == "Suggested Partner"
     assert app.text_input[0].label == "Partner Name"

@@ -28,11 +28,11 @@ def render_app() -> None:
     st.set_page_config(page_title=settings.app_title, layout="wide")
 
     services = get_app_services()
-    services.accounting.bootstrap_sample_data()
 
     st.title(settings.app_title)
     st.caption("Minimal accounting review app: partners, transactions, and reports.")
     render_notification()
+    _render_demo_seed_action(services)
 
     section = st.sidebar.radio(
         "Navigation",
@@ -50,6 +50,38 @@ def render_app() -> None:
         _render_partners_section(services)
         return
     _render_reports_section(entries)
+
+
+def _render_demo_seed_action(services: AppServices) -> None:
+    action_col, status_col = st.columns([1, 3])
+
+    with action_col:
+        seed_clicked = st.button("Seed Demo Data", use_container_width=True)
+
+    with status_col:
+        st.caption("Project starts empty. Use demo seed only when you want sample review data.")
+
+    if not seed_clicked:
+        return
+
+    progress_bar = st.progress(0, text="Preparing demo data...")
+    try:
+        with st.spinner("Seeding demo data..."):
+            inserted = services.accounting.seed_demo_data(
+                on_progress=lambda current, total: progress_bar.progress(
+                    int(current / total * 100),
+                    text=f"Seeding demo data... {current}/{total}",
+                )
+            )
+        progress_bar.empty()
+        if inserted == 0:
+            queue_notification("warning", "Demo data already loaded")
+        else:
+            queue_notification("success", f"Demo data seeded: {inserted} transactions")
+        st.rerun()
+    except Exception as error:
+        progress_bar.empty()
+        render_error("Could not seed demo data", error)
 
 
 def _render_summary(entries) -> None:

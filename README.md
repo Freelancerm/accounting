@@ -24,6 +24,7 @@ This repository implements a deliberately small accounting web app. It lets a re
   - cash payment to vendor
 - transaction form auto-generates partner codes and document references
 - transaction entry suggests existing partners by typed name
+- app starts empty; reviewer can load sample records with `Seed Demo Data`
 - double-entry journal postings
 - SQLite persistence
 - Streamlit UI
